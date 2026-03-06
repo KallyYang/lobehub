@@ -43,8 +43,8 @@ const VISIBLE_CLAIM_KEYS = new Set([
   'updated_at',
 ]);
 
-/** Claim keys whose value should be rendered as a clickable link */
-const URL_CLAIM_KEYS = new Set(['html_url', 'profile', 'blog']);
+const isUrl = (value: unknown): value is string =>
+  typeof value === 'string' && (value.startsWith('https://') || value.startsWith('http://'));
 
 /** Convert snake_case claim key to a readable label */
 const formatClaimLabel = (key: string): string =>
@@ -225,7 +225,7 @@ export const SSOProvidersList = memo(() => {
                     <Text fontSize={11} style={{ flexShrink: 0, minWidth: 100 }} type="secondary">
                       {formatClaimLabel(key)}
                     </Text>
-                    {URL_CLAIM_KEYS.has(key) && typeof value === 'string' ? (
+                    {isUrl(value) ? (
                       <a
                         href={value}
                         rel="noopener noreferrer"
