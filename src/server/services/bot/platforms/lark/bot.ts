@@ -1,8 +1,8 @@
 import { createLarkAdapter } from '@lobechat/adapter-lark';
 import debug from 'debug';
 
-import { LarkRestApi } from '../larkRestApi';
-import type { PlatformBot, PlatformDescriptor } from '../types';
+import type { PlatformBot, PlatformDescriptor } from '../../types';
+import { LarkRestApi } from './restApi';
 
 const log = debug('lobe-server:bot:gateway:lark');
 

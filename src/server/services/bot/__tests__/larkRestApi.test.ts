@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LarkRestApi } from '../larkRestApi';
+import { LarkRestApi } from '../platforms/lark/restApi';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;

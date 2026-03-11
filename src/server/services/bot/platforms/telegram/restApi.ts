@@ -2,7 +2,7 @@ import debug from 'debug';
 
 const log = debug('lobe-server:bot:telegram-rest');
 
-const TELEGRAM_API_BASE = 'https://api.telegram.org';
+export const TELEGRAM_API_BASE = 'https://api.telegram.org';
 
 /**
  * Lightweight wrapper around the Telegram Bot API.

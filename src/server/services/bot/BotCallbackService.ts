@@ -6,8 +6,8 @@ import { type LobeChatDatabase } from '@/database/type';
 import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { SystemAgentService } from '@/server/services/systemAgent';
 
-import { DiscordRestApi } from './discordRestApi';
 import { getPlatformDescriptor } from './platforms';
+import { DiscordRestApi } from './platforms/discord';
 import { renderError, renderFinalReply, renderStepProgress, splitMessage } from './replyTemplate';
 import type { PlatformMessenger } from './types';
 

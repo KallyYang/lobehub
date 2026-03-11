@@ -7,8 +7,8 @@ import debug from 'debug';
 import { appEnv } from '@/envs/app';
 import { getAgentRuntimeRedisClient } from '@/server/modules/AgentRuntime/redis';
 
-import { DiscordRestApi } from '../discordRestApi';
-import type { PlatformBot, PlatformDescriptor, PlatformMessenger } from '../types';
+import type { PlatformBot, PlatformDescriptor, PlatformMessenger } from '../../types';
+import { DiscordRestApi } from './restApi';
 
 const log = debug('lobe-server:bot:gateway:discord');
 

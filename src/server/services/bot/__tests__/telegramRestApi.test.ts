@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { TelegramRestApi } from '../telegramRestApi';
+import { TelegramRestApi } from '../platforms/telegram/restApi';
 
 const mockFetch = vi.fn();
 global.fetch = mockFetch;

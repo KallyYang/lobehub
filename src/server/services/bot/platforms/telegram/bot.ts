@@ -3,8 +3,8 @@ import debug from 'debug';
 
 import { appEnv } from '@/envs/app';
 
-import { TelegramRestApi } from '../telegramRestApi';
-import type { PlatformBot, PlatformDescriptor, PlatformMessenger } from '../types';
+import type { PlatformBot, PlatformDescriptor, PlatformMessenger } from '../../types';
+import { TELEGRAM_API_BASE, TelegramRestApi } from './restApi';
 
 const log = debug('lobe-server:bot:gateway:telegram');
 
@@ -39,7 +39,7 @@ export async function setTelegramWebhook(
     params.secret_token = secretToken;
   }
 
-  const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+  const response = await fetch(`${TELEGRAM_API_BASE}/bot${botToken}/setWebhook`, {
     body: JSON.stringify(params),
     headers: { 'Content-Type': 'application/json' },
     method: 'POST',
@@ -93,10 +93,9 @@ export class Telegram implements PlatformBot {
   }
 
   private async deleteWebhook(): Promise<void> {
-    const response = await fetch(
-      `https://api.telegram.org/bot${this.config.botToken}/deleteWebhook`,
-      { method: 'POST' },
-    );
+    const response = await fetch(`${TELEGRAM_API_BASE}/bot${this.config.botToken}/deleteWebhook`, {
+      method: 'POST',
+    });
 
     if (!response.ok) {
       const text = await response.text();

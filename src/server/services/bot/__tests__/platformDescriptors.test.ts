@@ -25,7 +25,7 @@ vi.mock('@/envs/app', () => ({
   appEnv: { APP_URL: 'https://app.example.com' },
 }));
 
-vi.mock('../discordRestApi', () => ({
+vi.mock('../platforms/discord/restApi', () => ({
   DiscordRestApi: vi.fn().mockImplementation(() => ({
     createMessage: vi.fn().mockResolvedValue({ id: 'msg-1' }),
     editMessage: vi.fn().mockResolvedValue(undefined),
@@ -35,7 +35,7 @@ vi.mock('../discordRestApi', () => ({
   })),
 }));
 
-vi.mock('../telegramRestApi', () => ({
+vi.mock('../platforms/telegram/restApi', () => ({
   TelegramRestApi: vi.fn().mockImplementation(() => ({
     editMessageText: vi.fn().mockResolvedValue(undefined),
     removeMessageReaction: vi.fn().mockResolvedValue(undefined),
@@ -44,7 +44,7 @@ vi.mock('../telegramRestApi', () => ({
   })),
 }));
 
-vi.mock('../larkRestApi', () => ({
+vi.mock('../platforms/lark/restApi', () => ({
   LarkRestApi: vi.fn().mockImplementation(() => ({
     editMessage: vi.fn().mockResolvedValue(undefined),
     sendMessage: vi.fn().mockResolvedValue({ messageId: 'lark-msg-1' }),
