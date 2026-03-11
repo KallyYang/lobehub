@@ -1,10 +1,22 @@
 import { createPrivateKey, sign } from 'node:crypto';
 
 /**
+ * PKCS8 DER prefix for Ed25519 private keys.
+ *
+ * ASN.1 structure:
+ *   SEQUENCE {
+ *     INTEGER 0 (version)
+ *     SEQUENCE { OID 1.3.101.112 (Ed25519) }
+ *     OCTET STRING { OCTET STRING { <32-byte seed> } }
+ *   }
+ */
+const ED25519_PKCS8_PREFIX = Buffer.from('302e020100300506032b657004220420', 'hex');
+
+/**
  * Sign the webhook verification response using Ed25519.
  *
  * QQ Bot webhook verification requires:
- * 1. Pad the clientSecret to 32 bytes as the seed
+ * 1. Repeat the clientSecret until >= 32 bytes, then truncate to 32 as the seed
  * 2. Create an Ed25519 private key from the seed
  * 3. Sign the concatenated message (eventTs + plainToken)
  * 4. Return the signature as a hex string
@@ -14,22 +26,16 @@ export function signWebhookResponse(
   plainToken: string,
   clientSecret: string,
 ): string {
-  // Pad clientSecret to 32 bytes (Ed25519 seed length)
-  const seed = Buffer.alloc(32);
-  Buffer.from(clientSecret).copy(seed);
+  // QQ requires: repeat the secret string until length >= 32, then truncate to 32 bytes
+  let seedStr = clientSecret;
+  while (seedStr.length < 32) {
+    seedStr = seedStr.repeat(2);
+  }
+  const seed = Buffer.from(seedStr.slice(0, 32), 'utf8');
 
-  // Create Ed25519 private key from seed
-  // Node.js crypto expects the key in a specific format for Ed25519
-  // We need to construct a proper PKCS8 DER format
-  const privateKey = createPrivateKey({
-    format: 'jwk',
-    key: {
-      crv: 'Ed25519',
-      d: seed.toString('base64url'),
-      kty: 'OKP',
-      x: '', // Will be derived from d
-    },
-  });
+  // Build PKCS8 DER key — Node.js derives the public key from the seed automatically
+  const pkcs8Der = Buffer.concat([ED25519_PKCS8_PREFIX, seed]);
+  const privateKey = createPrivateKey({ format: 'der', key: pkcs8Der, type: 'pkcs8' });
 
   // Sign the message
   const message = Buffer.from(eventTs + plainToken);
