@@ -576,6 +576,46 @@ describe('AgentRuntimeService', () => {
         }),
       );
     });
+
+    it('should publish agent_runtime_end when step completes with status done', async () => {
+      // Regression: when runtime.step returns status='done' (simple LLM response, no tool calls),
+      // coordinator.saveStepResult should detect the state transition and publish agent_runtime_end.
+      // Without this, the SSE connection stays open and keeps sending heartbeats forever.
+      const mockStepResult = {
+        newState: { ...mockState, stepCount: 1, status: 'done' },
+        nextContext: null,
+        events: [{ type: 'done', reason: 'natural_end' }],
+      };
+
+      const mockRuntime = { step: vi.fn().mockResolvedValue(mockStepResult) };
+      vi.spyOn(service as any, 'createAgentRuntime').mockReturnValue({ runtime: mockRuntime });
+
+      await service.executeStep(mockParams);
+
+      // Verify agent_runtime_end was published via coordinator.saveStepResult
+      // The coordinator should detect status transition to 'done' and call publishAgentRuntimeEnd
+      expect(mockStreamManager.publishAgentRuntimeEnd).toHaveBeenCalledWith(
+        'test-operation-1',
+        expect.any(Number), // stepCount
+        expect.objectContaining({ status: 'done' }),
+      );
+    });
+
+    it('should NOT publish agent_runtime_end when step completes with status running', async () => {
+      const mockStepResult = {
+        newState: { ...mockState, stepCount: 2, status: 'running' },
+        nextContext: mockParams.context,
+        events: [],
+      };
+
+      const mockRuntime = { step: vi.fn().mockResolvedValue(mockStepResult) };
+      vi.spyOn(service as any, 'createAgentRuntime').mockReturnValue({ runtime: mockRuntime });
+
+      await service.executeStep(mockParams);
+
+      // agent_runtime_end should NOT be called for running state
+      expect(mockStreamManager.publishAgentRuntimeEnd).not.toHaveBeenCalled();
+    });
   });
 
   describe('executeStep - tool result extraction', () => {

@@ -7,6 +7,13 @@ import { useChatStore } from '@/store/chat/store';
 // Keep zustand mock as it's needed globally
 vi.mock('zustand/traditional');
 
+// Mock packages that have cloud-specific import chains to prevent resolution errors
+vi.mock('@lobechat/business-model-runtime', () => ({}));
+vi.mock('@lobechat/model-runtime', () => ({
+  ModelProviderList: [],
+  ProviderRuntimeMap: {},
+}));
+
 // Test Constants
 const TEST_IDS = {
   ASSISTANT_MESSAGE_ID: 'test-assistant-id',
@@ -185,7 +192,7 @@ describe('runAgent actions', () => {
         expect(context.assistantId).toBe(customAssistantId);
       });
 
-      it('should NOT update assistantId when it is already set', async () => {
+      it('should NOT update assistantId when stream_start has the same assistantId', async () => {
         const { result } = renderHook(() => useChatStore());
 
         const originalAssistantId = 'original-assistant-id';
@@ -196,7 +203,7 @@ describe('runAgent actions', () => {
         const event = createStreamStartEvent({
           data: {
             assistantMessage: {
-              id: 'different-assistant-id',
+              id: originalAssistantId, // Same ID
               role: 'assistant',
               content: '',
               createdAt: Date.now(),
@@ -215,6 +222,274 @@ describe('runAgent actions', () => {
 
         // assistantId should remain unchanged
         expect(context.assistantId).toBe(originalAssistantId);
+        // Should NOT call refreshMessages or dispatchMessage
+        expect(result.current.refreshMessages).not.toHaveBeenCalled();
+        expect(result.current.internal_dispatchMessage).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('multi-step tool execution (stream_start with new assistantId)', () => {
+      it('should switch assistantId when a new stream_start arrives with different ID', async () => {
+        const { result } = renderHook(() => useChatStore());
+
+        const step0AssistantId = 'step-0-assistant-id';
+        const step1AssistantId = 'step-1-assistant-id';
+        const context = createStreamingContext({
+          assistantId: step0AssistantId,
+          content: 'Step 0 content',
+          reasoning: 'Step 0 reasoning',
+          toolsCalling: [
+            {
+              id: 'tool-1',
+              identifier: 'search',
+              type: 'default',
+              apiName: 'search',
+              arguments: '{}',
+            },
+          ],
+        });
+
+        const event = createStreamStartEvent({
+          data: {
+            assistantMessage: {
+              id: step1AssistantId,
+              role: 'assistant',
+              content: '',
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            },
+          },
+          stepIndex: 2,
+        });
+
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            event,
+            context,
+          );
+        });
+
+        // assistantId should switch to the new message
+        expect(context.assistantId).toBe(step1AssistantId);
+        // Accumulated content should be reset
+        expect(context.content).toBe('');
+        expect(context.reasoning).toBe('');
+        expect(context.toolsCalling).toBeUndefined();
+        // Should refresh messages to load tool result messages
+        expect(result.current.refreshMessages).toHaveBeenCalled();
+        // Should start loading on the new assistant message
+        expect(result.current.internal_toggleMessageLoading).toHaveBeenCalledWith(
+          true,
+          step1AssistantId,
+        );
+      });
+
+      it('should stream text to the correct (new) assistant message after switching', async () => {
+        const { result } = renderHook(() => useChatStore());
+
+        const step0AssistantId = 'step-0-assistant-id';
+        const step1AssistantId = 'step-1-assistant-id';
+        const context = createStreamingContext({
+          assistantId: step0AssistantId,
+          content: 'Step 0 content',
+        });
+
+        // Step 1 stream_start with new assistant ID
+        const streamStartEvent = createStreamStartEvent({
+          data: {
+            assistantMessage: {
+              id: step1AssistantId,
+              role: 'assistant',
+              content: '',
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+            },
+          },
+          stepIndex: 2,
+        });
+
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            streamStartEvent,
+            context,
+          );
+        });
+
+        // Now send a text chunk — it should go to the NEW assistant message
+        const textChunkEvent: StreamEvent = {
+          type: 'stream_chunk',
+          timestamp: Date.now(),
+          operationId: TEST_IDS.OPERATION_ID,
+          stepIndex: 2,
+          data: {
+            chunkType: 'text',
+            content: 'Step 1 response',
+          },
+        };
+
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            textChunkEvent,
+            context,
+          );
+        });
+
+        // Content should only contain step 1's text (not step 0's)
+        expect(context.content).toBe('Step 1 response');
+        // Update should target the NEW assistant message
+        expect(result.current.internal_dispatchMessage).toHaveBeenCalledWith({
+          id: step1AssistantId,
+          type: 'updateMessage',
+          value: { content: 'Step 1 response' },
+        });
+        // Should NOT have updated the old assistant message with step 1 content
+        expect(result.current.internal_dispatchMessage).not.toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: step0AssistantId,
+            type: 'updateMessage',
+            value: expect.objectContaining({ content: expect.stringContaining('Step 1') }),
+          }),
+        );
+      });
+
+      it('should handle full multi-step lifecycle: stream → tools → new stream', async () => {
+        const { result } = renderHook(() => useChatStore());
+
+        const step0AssistantId = 'step-0-assistant-id';
+        const step1AssistantId = 'step-1-assistant-id';
+        const context = createStreamingContext({ assistantId: '' });
+
+        // === Step 0: First stream_start ===
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            createStreamStartEvent({
+              data: {
+                assistantMessage: {
+                  id: step0AssistantId,
+                  role: 'assistant',
+                  content: '',
+                  createdAt: Date.now(),
+                  updatedAt: Date.now(),
+                },
+              },
+              stepIndex: 0,
+            }),
+            context,
+          );
+        });
+        expect(context.assistantId).toBe(step0AssistantId);
+
+        // === Step 0: Text chunk ===
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            {
+              type: 'stream_chunk',
+              timestamp: Date.now(),
+              operationId: TEST_IDS.OPERATION_ID,
+              stepIndex: 0,
+              data: { chunkType: 'text', content: 'Let me search' },
+            },
+            context,
+          );
+        });
+        expect(context.content).toBe('Let me search');
+
+        // === Step 0: Tools calling chunk ===
+        const toolPayload = [
+          {
+            id: 'call-1',
+            identifier: 'web-search',
+            type: 'default' as const,
+            apiName: 'search',
+            arguments: '{"q":"test"}',
+          },
+        ];
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            {
+              type: 'stream_chunk',
+              timestamp: Date.now(),
+              operationId: TEST_IDS.OPERATION_ID,
+              stepIndex: 0,
+              data: { chunkType: 'tools_calling', toolsCalling: toolPayload },
+            },
+            context,
+          );
+        });
+        expect(context.toolsCalling).toEqual(toolPayload);
+
+        // === Step 0: stream_end ===
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            {
+              type: 'stream_end',
+              timestamp: Date.now(),
+              operationId: TEST_IDS.OPERATION_ID,
+              stepIndex: 0,
+              data: { finalContent: 'Let me search', toolCalls: toolPayload },
+            },
+            context,
+          );
+        });
+
+        // === Step 1: New stream_start with different assistant ID ===
+        vi.mocked(result.current.internal_dispatchMessage).mockClear();
+
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            createStreamStartEvent({
+              data: {
+                assistantMessage: {
+                  id: step1AssistantId,
+                  role: 'assistant',
+                  content: '',
+                  createdAt: Date.now(),
+                  updatedAt: Date.now(),
+                },
+              },
+              stepIndex: 2,
+            }),
+            context,
+          );
+        });
+
+        // Context should be reset for step 1
+        expect(context.assistantId).toBe(step1AssistantId);
+        expect(context.content).toBe('');
+        expect(context.reasoning).toBe('');
+        expect(context.toolsCalling).toBeUndefined();
+
+        // === Step 1: Text chunk ===
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            {
+              type: 'stream_chunk',
+              timestamp: Date.now(),
+              operationId: TEST_IDS.OPERATION_ID,
+              stepIndex: 2,
+              data: { chunkType: 'text', content: 'Based on the search results' },
+            },
+            context,
+          );
+        });
+
+        // Step 1 content should only have step 1's text
+        expect(context.content).toBe('Based on the search results');
+        // Should update the NEW assistant message
+        expect(result.current.internal_dispatchMessage).toHaveBeenCalledWith({
+          id: step1AssistantId,
+          type: 'updateMessage',
+          value: { content: 'Based on the search results' },
+        });
       });
     });
 
@@ -288,6 +563,44 @@ describe('runAgent actions', () => {
           type: 'updateMessage',
           value: { content: 'Hello' },
         });
+      });
+    });
+
+    describe('agent_runtime_end event', () => {
+      it('should call refreshMessages to sync final state', async () => {
+        const { result } = renderHook(() => useChatStore());
+
+        const context = createStreamingContext({
+          assistantId: TEST_IDS.ASSISTANT_MESSAGE_ID,
+        });
+
+        const event: StreamEvent = {
+          type: 'agent_runtime_end',
+          timestamp: Date.now(),
+          operationId: TEST_IDS.OPERATION_ID,
+          stepIndex: 2,
+          data: {
+            reason: 'completed',
+            reasonDetail: 'Agent completed successfully',
+            finalState: { status: 'done' },
+          },
+        };
+
+        await act(async () => {
+          await result.current.internal_handleAgentStreamEvent(
+            TEST_IDS.OPERATION_ID,
+            event,
+            context,
+          );
+        });
+
+        // Should refresh messages to ensure all tool results are synced
+        expect(result.current.refreshMessages).toHaveBeenCalled();
+        // Should stop loading
+        expect(result.current.internal_toggleMessageLoading).toHaveBeenCalledWith(
+          false,
+          TEST_IDS.ASSISTANT_MESSAGE_ID,
+        );
       });
     });
 

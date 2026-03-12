@@ -93,6 +93,8 @@ interface InternalExecAgentParams extends ExecAgentParams {
   discordContext?: any;
   /** Eval context for injecting environment prompts into system message */
   evalContext?: EvalContext;
+  /** Already-uploaded file IDs to attach to the user message (from frontend) */
+  fileIds?: string[];
   /** External file URLs to download, upload to S3, and attach to the user message */
   files?: Array<{
     mimeType?: string;
@@ -102,6 +104,20 @@ interface InternalExecAgentParams extends ExecAgentParams {
   }>;
   /** Maximum steps for the agent operation */
   maxSteps?: number;
+  /** Create a new thread along with execution */
+  newThread?: {
+    parentThreadId?: string;
+    sourceMessageId: string;
+    title?: string;
+    type: string;
+  };
+  /** Create a new topic with additional options (topicMessageIds) */
+  newTopic?: {
+    topicMessageIds?: string[];
+  };
+  /** Page selections metadata to attach to the user message */
+  pageSelections?: Array<{ content: string; title?: string; url?: string }>;
+
   /** Step lifecycle callbacks for operation tracking (server-side only) */
   stepCallbacks?: StepLifecycleCallbacks;
   /**
@@ -196,8 +212,12 @@ export class AiAgentService {
       botContext,
       discordContext,
       existingMessageIds = [],
+      fileIds,
       files,
       instructions,
+      newThread,
+      newTopic,
+      pageSelections,
       stepCallbacks,
       stream,
       title,
@@ -271,6 +291,7 @@ export class AiAgentService {
 
     // 3. Handle topic creation: if no topicId provided, create a new topic; otherwise reuse existing
     let topicId = appContext?.topicId;
+    let isCreateNewTopic = false;
     if (!topicId) {
       // Prepare metadata with cronJobId and botContext if provided
       const metadata =
@@ -278,14 +299,16 @@ export class AiAgentService {
           ? { bot: botContext, cronJobId: cronJobId || undefined }
           : undefined;
 
-      const newTopic = await this.topicModel.create({
+      const createdTopic = await this.topicModel.create({
         agentId: resolvedAgentId,
+        messages: newTopic?.topicMessageIds,
         metadata,
         title:
           title !== undefined ? title : prompt.slice(0, 50) + (prompt.length > 50 ? '...' : ''),
         trigger,
       });
-      topicId = newTopic.id;
+      topicId = createdTopic.id;
+      isCreateNewTopic = true;
       log(
         'execAgent: created new topic %s with trigger %s, cronJobId %s',
         topicId,
@@ -617,13 +640,13 @@ export class AiAgentService {
       });
     }
 
-    // 12. Upload external files to S3 and collect file IDs
-    let fileIds: string[] | undefined;
+    // 12. Handle file IDs: either use already-uploaded fileIds or upload external files
+    let resolvedFileIds: string[] | undefined = fileIds;
     let imageList: Array<{ alt: string; id: string; url: string }> | undefined;
 
     if (files && files.length > 0) {
       const fileService = new FileService(this.db, this.userId);
-      fileIds = [];
+      resolvedFileIds = resolvedFileIds || [];
       imageList = [];
 
       for (const file of files) {
@@ -632,7 +655,7 @@ export class AiAgentService {
 
         try {
           const result = await fileService.uploadFromUrl(file.url, pathname);
-          fileIds.push(result.fileId);
+          resolvedFileIds.push(result.fileId);
 
           // Build imageList for vision-capable models
           const mimeType = file.mimeType || '';
@@ -644,20 +667,40 @@ export class AiAgentService {
         }
       }
 
-      if (fileIds.length > 0) {
-        log('execAgent: uploaded %d files to S3', fileIds.length);
+      if (resolvedFileIds.length > 0) {
+        log('execAgent: uploaded %d files to S3', resolvedFileIds.length);
       }
       if (imageList.length === 0) imageList = undefined;
     }
 
+    // 12.5. Create thread if newThread is provided
+    let createdThreadId: string | undefined;
+    let threadId = appContext?.threadId ?? undefined;
+    if (newThread) {
+      const threadItem = await this.threadModel.create({
+        parentThreadId: newThread.parentThreadId,
+        sourceMessageId: newThread.sourceMessageId,
+        title: newThread.title,
+        topicId,
+        type: newThread.type as any,
+      });
+      if (threadItem) {
+        threadId = threadItem.id;
+        createdThreadId = threadItem.id;
+        log('execAgent: created new thread %s', threadId);
+      }
+    }
+
     // 13. Create user message in database
     // Include threadId if provided (for SubAgent task execution in isolated Thread)
+    const userMessageMetadata = pageSelections?.length ? { pageSelections } : undefined;
     const userMessageRecord = await this.messageModel.create({
       agentId: resolvedAgentId,
       content: prompt,
-      files: fileIds,
+      files: resolvedFileIds,
+      metadata: userMessageMetadata,
       role: 'user',
-      threadId: appContext?.threadId ?? undefined,
+      threadId,
       topicId,
     });
     log('execAgent: created user message %s', userMessageRecord.id);
@@ -671,7 +714,7 @@ export class AiAgentService {
       parentId: userMessageRecord.id,
       provider,
       role: 'assistant',
-      threadId: appContext?.threadId ?? undefined,
+      threadId,
       topicId,
     });
     log('execAgent: created assistant message %s', assistantMessageRecord.id);
@@ -732,7 +775,7 @@ export class AiAgentService {
         appContext: {
           agentId: resolvedAgentId,
           groupId: appContext?.groupId,
-          threadId: appContext?.threadId,
+          threadId,
           topicId,
         },
         autoStart,
@@ -766,6 +809,8 @@ export class AiAgentService {
         assistantMessageId: assistantMessageRecord.id,
         autoStarted: result.autoStarted,
         createdAt: new Date().toISOString(),
+        createdThreadId,
+        isCreateNewTopic,
         message: 'Agent operation created successfully',
         messageId: result.messageId,
         operationId,
@@ -801,7 +846,9 @@ export class AiAgentService {
         assistantMessageId: assistantMessageRecord.id,
         autoStarted: false,
         createdAt: new Date().toISOString(),
+        createdThreadId,
         error: errorMessage,
+        isCreateNewTopic,
         message: 'Agent operation failed to start',
         operationId,
         status: 'error',

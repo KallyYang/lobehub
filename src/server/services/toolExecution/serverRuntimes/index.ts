@@ -9,6 +9,7 @@
 import { type ToolExecutionContext } from '../types';
 import { calculatorRuntime } from './calculator';
 import { cloudSandboxRuntime } from './cloudSandbox';
+import { knowledgeBaseRuntime } from './knowledgeBase';
 import { localSystemRuntime } from './localSystem';
 import { memoryRuntime } from './memory';
 import { notebookRuntime } from './notebook';
@@ -38,6 +39,7 @@ registerRuntimes([
   webBrowsingRuntime,
   cloudSandboxRuntime,
   calculatorRuntime,
+  knowledgeBaseRuntime,
   notebookRuntime,
   skillStoreRuntime,
   skillsRuntime,

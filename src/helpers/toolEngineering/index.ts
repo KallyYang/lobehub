@@ -91,6 +91,8 @@ export const createAgentToolsEngine = (
   const agentState = getAgentStoreState();
   const userPlugins = agentSelectors.currentAgentPlugins(agentState);
 
+  const userPlugins = agentSelectors.currentAgentPlugins(agentState);
+
   return createToolsEngine({
     defaultToolIds,
     enableChecker: createEnableChecker({

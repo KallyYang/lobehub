@@ -60,13 +60,16 @@ export class ConversationControlActionImpl {
       }
     });
 
-    // Restore editor state if it's the active session
+    // Restore editor content if it's the active session
     if (contextKey === messageMapKey({ agentId: activeAgentId, topicId: activeTopicId })) {
-      // Find the latest sendMessage operation with editor state
+      // Find the latest sendMessage operation with saved message content
       for (const opId of [...operationIds].reverse()) {
         const op = this.#get().operations[opId];
-        if (op && op.type === 'sendMessage' && op.metadata.inputEditorTempState) {
-          this.#get().mainInputEditor?.setJSONState(op.metadata.inputEditorTempState);
+        if (op && op.type === 'sendMessage' && op.metadata.inputMessageContent) {
+          this.#get().mainInputEditor?.setDocument(
+            'markdown',
+            op.metadata.inputMessageContent as string,
+          );
           break;
         }
       }

@@ -93,6 +93,33 @@ const ExecAgentSchema = z
     autoStart: z.boolean().optional().default(true),
     /** Optional existing message IDs to include in context */
     existingMessageIds: z.array(z.string()).optional().default([]),
+    /** Already-uploaded file IDs to attach to the user message */
+    fileIds: z.array(z.string()).optional(),
+    /** Create a new thread along with execution */
+    newThread: z
+      .object({
+        parentThreadId: z.string().optional(),
+        sourceMessageId: z.string(),
+        title: z.string().optional(),
+        type: z.string(),
+      })
+      .optional(),
+    /** Create a new topic with additional options */
+    newTopic: z
+      .object({
+        topicMessageIds: z.array(z.string()).optional(),
+      })
+      .optional(),
+    /** Page selections metadata to attach to the user message */
+    pageSelections: z
+      .array(
+        z.object({
+          content: z.string(),
+          title: z.string().optional(),
+          url: z.string().optional(),
+        }),
+      )
+      .optional(),
     /** The user input/prompt */
     prompt: z.string(),
     /** The agent slug to run (either agentId or slug is required) */
@@ -518,19 +545,46 @@ export const aiAgentRouter = router({
     }),
 
   execAgent: aiAgentProcedure.input(ExecAgentSchema).mutation(async ({ input, ctx }) => {
-    const { agentId, slug, prompt, appContext, autoStart = true, existingMessageIds = [] } = input;
+    const {
+      agentId,
+      slug,
+      prompt,
+      appContext,
+      autoStart = true,
+      existingMessageIds = [],
+      fileIds,
+      newThread,
+      newTopic,
+      pageSelections,
+    } = input;
 
     log('execAgent: identifier=%s, prompt=%s', agentId || slug, prompt.slice(0, 50));
 
     try {
-      return await ctx.aiAgentService.execAgent({
+      const result = await ctx.aiAgentService.execAgent({
         agentId,
         appContext,
         autoStart,
         existingMessageIds,
+        fileIds,
+        newThread,
+        newTopic,
+        pageSelections,
         prompt,
         slug,
       });
+
+      // Return messages for UI sync regardless of success/failure,
+      // since execAgent persists user and assistant messages before starting the operation
+      const { messages, topics } = await ctx.aiChatService.getMessagesAndTopics({
+        agentId: result.agentId,
+        groupId: appContext?.groupId,
+        includeTopic: result.isCreateNewTopic,
+        threadId: result.createdThreadId ?? appContext?.threadId,
+        topicId: result.topicId,
+      });
+
+      return { ...result, messages, topics };
     } catch (error: any) {
       console.error('execAgent failed: %O', error);
 

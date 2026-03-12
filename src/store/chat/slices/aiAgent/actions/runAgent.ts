@@ -129,6 +129,9 @@ export class AgentActionImpl {
           });
         }
 
+        // Final refresh to ensure all messages (tool results, etc.) are in sync
+        await this.#get().refreshMessages();
+
         // Stop loading state
         log(`Stopping loading for completed agent runtime: ${assistantId}`);
         this.#get().internal_toggleMessageLoading(false, assistantId);
@@ -136,14 +139,34 @@ export class AgentActionImpl {
       }
 
       case 'stream_start': {
-        // If assistantId is already set (Group Chat flow), skip message creation/deletion
-        // In Group Chat, messages are already synced via replaceMessages from backend response
+        const newAssistantId = event.data?.assistantMessage?.id;
+
         if (context.assistantId) {
-          log(`Stream started for ${context.assistantId} (message already synced from backend)`);
+          // Multi-step: a new stream started for a different assistant message
+          // This happens when tools are called and the LLM is invoked again
+          if (newAssistantId && newAssistantId !== context.assistantId) {
+            log(
+              `New stream step started, switching assistant from ${context.assistantId} to ${newAssistantId}`,
+            );
+
+            // Reset accumulated content for the new step
+            context.content = '';
+            context.reasoning = '';
+            context.toolsCalling = undefined;
+            context.assistantId = newAssistantId;
+
+            // Refresh messages to show tool result messages and the new assistant message
+            await this.#get().refreshMessages();
+
+            // Start loading on the new assistant message
+            this.#get().internal_toggleMessageLoading(true, newAssistantId);
+          } else {
+            log(`Stream started for ${context.assistantId} (message already synced from backend)`);
+          }
           break;
         }
 
-        // Original logic for normal Agent flow
+        // Original logic for normal Agent flow (first stream_start, no assistantId yet)
         log(`Stream started for ${assistantId}:`, event.data);
         internal_dispatchMessage({
           id: context.tmpAssistantId,

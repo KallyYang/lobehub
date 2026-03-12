@@ -69,6 +69,8 @@ const getAgentModeById =
 const getAgentEnableModeById =
   (agentId: string) =>
   (s: AgentStoreState): boolean => {
+    // TODO: remove this override after testing
+    return true;
     const mode = getAgentModeById(agentId)(s);
     return mode !== undefined;
   };

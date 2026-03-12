@@ -11,12 +11,16 @@ import {
 } from '@lobechat/types';
 import { nanoid } from '@lobechat/utils';
 import { TRPCClientError } from '@trpc/client';
+import debug from 'debug';
 import { t } from 'i18next';
 
 import { markUserValidAction } from '@/business/client/markUserValidAction';
+import { lambdaClient } from '@/libs/trpc/client';
+import { agentRuntimeClient, type StreamEvent } from '@/services/agentRuntime';
+import { aiAgentService } from '@/services/aiAgent';
 import { aiChatService } from '@/services/aiChat';
 import { getAgentStoreState } from '@/store/agent';
-import { agentSelectors } from '@/store/agent/selectors';
+import { agentByIdSelectors, agentSelectors } from '@/store/agent/selectors';
 import { agentGroupByIdSelectors, getChatGroupStoreState } from '@/store/agentGroup';
 import { type ChatStore } from '@/store/chat/store';
 import { getFileStoreState } from '@/store/file/store';
@@ -27,6 +31,8 @@ import { useUserMemoryStore } from '@/store/userMemory';
 
 import { dbMessageSelectors, displayMessageSelectors, topicSelectors } from '../../../selectors';
 import { messageMapKey } from '../../../utils/messageMapKey';
+
+const log = debug('store:chat:conversationLifecycle');
 
 /**
  * Extended params for sendMessage with context
@@ -208,12 +214,32 @@ export class ConversationLifecycleActionImpl {
     this.#get().associateMessageWithOperation(tempId, operationId);
     this.#get().associateMessageWithOperation(tempAssistantId, operationId);
 
-    // Store editor state in operation metadata for cancel restoration
-    const jsonState = mainInputEditor?.getJSONState();
+    // Store message content in operation metadata for cancel restoration
+    // Note: editor JSON state is already cleared at this point (clearContent in handleSend),
+    // so we store the raw message text instead
     this.#get().updateOperationMetadata(operationId, {
-      inputEditorTempState: jsonState,
+      inputMessageContent: message,
       inputSendErrorMsg: undefined,
     });
+
+    // ===== Agent Mode Branch =====
+    // When agent mode is enabled, use server-side execution (execAgent TRPC + SSE)
+    // instead of the client-side agent loop (sendMessageInServer + internal_execAgentRuntime)
+    const isAgentMode = agentByIdSelectors.getAgentEnableModeById(agentId)(getAgentStoreState());
+    if (isAgentMode) {
+      return this.#execAgentModeSendMessage({
+        abortController,
+        context: operationContext,
+        fileIds: fileIdList,
+        message,
+        messages,
+        newThread,
+        operationId,
+        pageSelections,
+        tempAssistantId,
+        tempId,
+      });
+    }
 
     let data: SendMessageServerResponse | undefined;
     try {
@@ -333,7 +359,7 @@ export class ConversationLifecycleActionImpl {
 
     // Clear editor temp state after message created
     if (data) {
-      this.#get().updateOperationMetadata(operationId, { inputEditorTempState: null });
+      this.#get().updateOperationMetadata(operationId, { inputMessageContent: null });
     }
 
     if (ENABLE_BUSINESS_FEATURES) {
@@ -414,6 +440,256 @@ export class ConversationLifecycleActionImpl {
       createdThreadId: data.createdThreadId,
       userMessageId: data.userMessageId,
     };
+  };
+
+  /**
+   * Server-side agent execution flow (agentMode=true).
+   * Follows the same pattern as sendGroupMessage:
+   * 1. Call execAgent TRPC (creates messages + starts background task)
+   * 2. Sync messages from response
+   * 3. Connect SSE stream for real-time updates
+   */
+  #execAgentModeSendMessage = async ({
+    abortController,
+    context,
+    fileIds,
+    message,
+    messages,
+    newThread,
+    operationId,
+    pageSelections,
+    tempAssistantId,
+    tempId,
+  }: {
+    abortController: AbortController;
+    context: ConversationContext;
+    fileIds?: string[];
+    message: string;
+    messages: { id: string }[];
+    newThread?: { sourceMessageId: string; type: string };
+    operationId: string;
+    pageSelections?: SendMessageParams['pageSelections'];
+    tempAssistantId: string;
+    tempId: string;
+  }): Promise<SendMessageResult | undefined> => {
+    const { agentId, topicId } = context;
+
+    try {
+      // 1. Call execAgent TRPC - creates messages + starts background agent task
+      const result = await lambdaClient.aiAgent.execAgent.mutate(
+        {
+          agentId,
+          appContext: {
+            groupId: context.groupId ?? undefined,
+            threadId: context.threadId ?? undefined,
+            topicId: topicId ?? undefined,
+          },
+          fileIds,
+          newThread: newThread
+            ? { sourceMessageId: newThread.sourceMessageId, type: newThread.type }
+            : undefined,
+          newTopic: !topicId ? { topicMessageIds: messages.map((m) => m.id) } : undefined,
+          pageSelections,
+          prompt: message,
+        },
+        { signal: abortController.signal },
+      );
+
+      log(
+        'execAgent result: operationId=%s, topicId=%s, success=%s',
+        result.operationId,
+        result.topicId,
+        result.success,
+      );
+
+      // 2. Update topics if new topic was created
+      if (result.topics) {
+        const pageSize = systemStatusSelectors.topicPageSize(useGlobalStore.getState());
+        this.#get().internal_updateTopics(agentId, {
+          groupId: context.groupId,
+          items: result.topics.items as any,
+          pageSize,
+          total: result.topics.total,
+        });
+      }
+
+      // 3. Switch to new topic if created
+      if (result.isCreateNewTopic && result.topicId) {
+        await this.#get().switchTopic(result.topicId, {
+          clearNewKey: true,
+          skipRefreshMessage: true,
+        });
+      }
+
+      // 4. Handle thread creation
+      if (result.createdThreadId) {
+        this.#get().updateOperationMetadata(operationId, {
+          createdThreadId: result.createdThreadId,
+        });
+        this.#get().openThreadInPortal(result.createdThreadId, context.sourceMessageId);
+        this.#get().refreshThreads();
+      }
+
+      // 5. Create exec context with updated topicId from server
+      const execContext = { ...context, topicId: result.topicId || topicId };
+
+      // 6. Replace temp messages with server messages
+      if (result.messages) {
+        this.#get().replaceMessages(result.messages, {
+          action: 'sendMessage/agentMode/syncMessages',
+          context: execContext,
+        });
+        this.#get().internal_dispatchMessage(
+          { ids: [tempId, tempAssistantId], type: 'deleteMessages' },
+          { operationId },
+        );
+      }
+
+      // 7. Check if operation failed to start (e.g., QStash unavailable)
+      if (result.success === false) {
+        log('Agent operation failed to start: %s', result.error);
+        this.#get().failOperation(operationId, {
+          message: result.error || 'Agent operation failed to start',
+          type: 'AgentStartupError',
+        });
+        this.#get().internal_toggleMessageLoading(false, result.assistantMessageId);
+        return {
+          assistantMessageId: result.assistantMessageId,
+          createdThreadId: result.createdThreadId,
+          userMessageId: result.userMessageId,
+        };
+      }
+
+      // Clear editor temp state after successful creation
+      this.#get().updateOperationMetadata(operationId, { inputMessageContent: null });
+
+      if (ENABLE_BUSINESS_FEATURES) {
+        markUserValidAction();
+      }
+
+      // 8. Topic title summarization (fire and forget)
+      if (result.topicId) {
+        const summaryTitle = async () => {
+          if (result.isCreateNewTopic) {
+            await this.#get().summaryTopicTitle(result.topicId, result.messages || []);
+            return;
+          }
+          const topic = topicSelectors.getTopicById(result.topicId)(this.#get());
+          if (topic && !topic.title) {
+            const chats = displayMessageSelectors
+              .getDisplayMessagesByKey(messageMapKey({ agentId, topicId: topic.id }))(this.#get())
+              .filter((item) => item.id !== result.assistantMessageId);
+            await this.#get().summaryTopicTitle(topic.id, chats);
+          }
+        };
+        summaryTitle().catch(console.error);
+      }
+
+      // 9. Complete sendMessage operation - agent execution is handled by SSE child operation
+      this.#get().completeOperation(operationId);
+
+      // 10. Create streaming context
+      const streamContext = {
+        assistantId: result.assistantMessageId,
+        content: '',
+        reasoning: '',
+        tmpAssistantId: tempAssistantId,
+      };
+
+      // 11. Start child operation for SSE stream using backend operationId
+      this.#get().startOperation({
+        context: { ...execContext, messageId: result.assistantMessageId },
+        label: 'Agent Mode Stream',
+        operationId: result.operationId,
+        parentOperationId: operationId,
+        type: 'agentModeStream',
+      });
+
+      // Associate assistant message with both operations
+      this.#get().associateMessageWithOperation(result.assistantMessageId, operationId);
+      this.#get().associateMessageWithOperation(result.assistantMessageId, result.operationId);
+
+      // 12. Connect to SSE stream
+      const { internal_handleAgentStreamEvent } = this.#get();
+      const eventSource = agentRuntimeClient.createStreamConnection(result.operationId, {
+        includeHistory: false,
+        onConnect: () => {
+          log('Stream connected to %s', result.operationId);
+        },
+        onDisconnect: () => {
+          log('Stream disconnected from %s', result.operationId);
+          this.#get().completeOperation(result.operationId);
+          if (result.topicId) this.#get().internal_updateTopicLoading(result.topicId, false);
+        },
+        onError: (error: Error) => {
+          log('Stream error for %s: %O', result.operationId, error);
+          this.#get().failOperation(result.operationId, {
+            message: error.message,
+            type: 'AgentStreamError',
+          });
+          if (streamContext.assistantId) {
+            this.#get().internal_handleAgentError(streamContext.assistantId, error.message);
+          }
+        },
+        onEvent: async (event: StreamEvent) => {
+          await internal_handleAgentStreamEvent(result.operationId, event, streamContext);
+        },
+      });
+
+      // 13. Register cancel handler
+      this.#get().onOperationCancel(result.operationId, async () => {
+        log('Cancelling SSE stream for operation %s', result.operationId);
+        eventSource.abort();
+
+        // Notify server to stop the agent execution
+        try {
+          await aiAgentService.interruptTask({ operationId: result.operationId });
+        } catch (e) {
+          log('Failed to interrupt server task: %O', e);
+        }
+      });
+
+      // 14. Topic loading state
+      if (result.topicId) this.#get().internal_updateTopicLoading(result.topicId, true);
+
+      return {
+        assistantMessageId: result.assistantMessageId,
+        createdThreadId: result.createdThreadId,
+        userMessageId: result.userMessageId,
+      };
+    } catch (error) {
+      const isAbortError =
+        error instanceof Error &&
+        (error.name === 'AbortError' ||
+          error.message.includes('aborted') ||
+          error.message.includes('cancelled'));
+
+      if (isAbortError) {
+        log('sendMessage (agentMode) aborted by user');
+      } else {
+        console.error('sendMessage (agentMode) failed:', error);
+        this.#get().failOperation(operationId, {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          type: 'SendAgentModeMessageError',
+        });
+
+        if (error instanceof TRPCClientError) {
+          this.#get().updateOperationMetadata(operationId, { inputSendErrorMsg: error.message });
+          this.#get().mainInputEditor?.setDocument('markdown', message);
+        }
+      }
+
+      // Clean up temp messages
+      this.#get().internal_dispatchMessage(
+        { ids: [tempId, tempAssistantId], type: 'deleteMessages' },
+        { operationId },
+      );
+
+      return undefined;
+    } finally {
+      this.#get().internal_toggleMessageLoading(false, tempId);
+      this.#get().internal_toggleMessageLoading(false, tempAssistantId);
+    }
   };
 
   continueGenerationMessage = async (id: string, messageId: string): Promise<void> => {

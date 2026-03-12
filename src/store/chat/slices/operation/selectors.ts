@@ -564,6 +564,7 @@ export const operationSelectors = {
   isAgentRuntimeRunningByContext,
   isInputLoadingByContext,
   isAnyMessageLoading,
+  isInputLoadingByContext,
   isContinuing,
   isInSearchWorkflow,
   isMainWindowAgentRuntimeRunning,

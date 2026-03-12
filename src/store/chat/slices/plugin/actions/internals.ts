@@ -83,9 +83,18 @@ export class PluginInternalsActionImpl {
       const repairer = new ToolArgumentsRepairer(manifest);
       const repairedArgs = repairer.parse(payload.apiName, payload.arguments);
 
+      // During streaming, arguments may be partial JSON that can't be parsed.
+      // ToolArgumentsRepairer.parse() falls back to {} when JSON.parse fails.
+      // In that case, keep the raw arguments string so streaming renderers
+      // can use safeParsePartialJSON to extract partial fields (e.g., title, content).
+      const repairProducedEmpty = Object.keys(repairedArgs).length === 0;
+      const hasRawContent = !!payload.arguments && payload.arguments !== '{}';
+      const args =
+        repairProducedEmpty && hasRawContent ? payload.arguments : JSON.stringify(repairedArgs);
+
       return {
         ...payload,
-        arguments: JSON.stringify(repairedArgs),
+        arguments: args,
         source: sourceMap[payload.identifier],
       };
     });
