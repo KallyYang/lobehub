@@ -142,7 +142,17 @@ export class AgentBridgeService {
         thread.adapter.addReaction(parentChannelThreadId(thread.id), message.id, RECEIVED_EMOJI),
       'add eyes',
     );
-    await thread.subscribe();
+
+    // Only subscribe to actual Discord threads, not regular channels.
+    // Subscribing to a regular channel would cause the bot to respond to ALL messages in it.
+    // Discord thread ID format: "discord:guild:channel[:thread]" — the 4th segment is present
+    // only when the message is inside a Discord thread.
+    const isDiscordTopLevelChannel =
+      botContext?.platform === 'discord' && !thread.adapter.decodeThreadId(thread.id).threadId;
+    if (!isDiscordTopLevelChannel) {
+      await thread.subscribe();
+    }
+
     await thread.startTyping();
 
     // Keep typing indicator alive (Telegram's expires after ~5s)
@@ -167,7 +177,8 @@ export class AgentBridgeService {
       });
 
       // Persist topic mapping and channel context in thread state for follow-up messages
-      if (topicId) {
+      // Skip for non-threaded Discord channels (no subscribe = no follow-up)
+      if (topicId && !isDiscordChannel) {
         await thread.setState({ channelContext, topicId });
         log('handleMention: stored topicId=%s in thread=%s state', topicId, thread.id);
       }
