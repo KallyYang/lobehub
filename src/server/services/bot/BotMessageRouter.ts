@@ -294,16 +294,53 @@ export class BotMessageRouter {
   // Helpers
   // ------------------------------------------------------------------
 
+  /**
+   * A proxy around the shared Redis client that suppresses duplicate `on('error', ...)`
+   * registrations. Each `createIoRedisState()` call adds an error listener to the client;
+   * with many bot instances sharing one client this would trigger
+   * MaxListenersExceededWarning. The proxy lets the first error listener through and
+   * silently drops subsequent ones, so it scales to any number of bots.
+   */
+  private sharedRedisProxy: ReturnType<typeof getAgentRuntimeRedisClient> | undefined;
+
+  private getSharedRedisProxy() {
+    if (this.sharedRedisProxy !== undefined) return this.sharedRedisProxy;
+
+    const redisClient = getAgentRuntimeRedisClient();
+    if (!redisClient) {
+      this.sharedRedisProxy = null;
+      return null;
+    }
+
+    let errorListenerRegistered = false;
+    this.sharedRedisProxy = new Proxy(redisClient, {
+      get(target, prop, receiver) {
+        if (prop === 'on') {
+          return (event: string, listener: (...args: any[]) => void) => {
+            if (event === 'error') {
+              if (errorListenerRegistered) return target;
+              errorListenerRegistered = true;
+            }
+            return target.on(event, listener);
+          };
+        }
+        return Reflect.get(target, prop, receiver);
+      },
+    });
+
+    return this.sharedRedisProxy;
+  }
+
   private createBot(adapters: Record<string, any>, label: string): Chat<any> {
     const config: any = {
       adapters,
       userName: `lobehub-bot-${label}`,
     };
 
-    const redisClient = getAgentRuntimeRedisClient();
-    if (redisClient) {
+    const redisProxy = this.getSharedRedisProxy();
+    if (redisProxy) {
       config.state = createIoRedisState({
-        client: redisClient,
+        client: redisProxy,
         keyPrefix: `chat-sdk:${label}`,
         logger: new ConsoleLogger(),
       });
