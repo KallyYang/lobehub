@@ -1,13 +1,12 @@
 import react from '@vitejs/plugin-react';
 import { codeInspectorPlugin } from 'code-inspector-plugin';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 import { viteEmotionSpeedy } from './emotionSpeedy';
 import { viteNodeModuleStub } from './nodeModuleStub';
 import { vitePlatformResolve } from './platformResolve';
 
 /**
- * Shared manualChunks — groups leaf-node modules to reduce chunk file count.
+ * Shared manual chunk naming — groups leaf-node modules to reduce chunk file count.
  * Only targets pure data modules (no downstream dependents) to avoid facade chunk issues.
  */
 /** Large i18n namespaces that get their own per-locale chunk instead of merging into the locale bundle */
@@ -99,14 +98,22 @@ function sharedManualChunks(id: string): string | undefined {
   if (id.includes('/motion/') || id.includes('framer-motion')) return 'vendor-motion';
 }
 
-export const sharedRollupOutput = {
-  chunkFileNames: (chunkInfo: { name: string }) => {
-    const { name } = chunkInfo;
-    if (name.startsWith('i18n-')) return 'i18n/[name]-[hash].js';
-    if (name.startsWith('vendor-')) return 'vendor/[name]-[hash].js';
-    return 'assets/[name]-[hash].js';
+const sharedChunkFileNames = (chunkInfo: { name: string }) => {
+  const { name } = chunkInfo;
+  if (name.startsWith('i18n-')) return 'i18n/[name]-[hash].js';
+  if (name.startsWith('vendor-')) return 'vendor/[name]-[hash].js';
+  return 'assets/[name]-[hash].js';
+};
+
+export const sharedRolldownOutput = {
+  chunkFileNames: sharedChunkFileNames,
+  codeSplitting: {
+    groups: [
+      {
+        name: (moduleId: string) => sharedManualChunks(moduleId) ?? null,
+      },
+    ],
   },
-  manualChunks: sharedManualChunks,
 };
 
 type Platform = 'web' | 'mobile' | 'desktop';
@@ -119,12 +126,11 @@ interface SharedRendererOptions {
 }
 
 export function sharedRendererPlugins(options: SharedRendererOptions) {
-  const defaultTsconfigPaths = options.tsconfigPaths ?? true;
   return [
     viteEmotionSpeedy(),
     viteNodeModuleStub(),
     vitePlatformResolve(options.platform),
-    defaultTsconfigPaths && tsconfigPaths({ projects: ['.'] }),
+
     isDev &&
       codeInspectorPlugin({
         bundler: 'vite',

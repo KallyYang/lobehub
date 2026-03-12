@@ -9,7 +9,7 @@ import {
   sharedOptimizeDeps,
   sharedRendererDefine,
   sharedRendererPlugins,
-  sharedRollupOutput,
+  sharedRolldownOutput,
 } from './plugins/vite/sharedRendererConfig';
 import { vercelSkewProtection } from './plugins/vite/vercelSkewProtection';
 
@@ -25,13 +25,15 @@ export default defineConfig({
   base: isDev ? '/' : process.env.VITE_CDN_BASE || '/spa/',
   build: {
     outDir: isMobile ? 'dist/mobile' : 'dist/desktop',
-    rollupOptions: {
+    rolldownOptions: {
       input: path.resolve(__dirname, isMobile ? 'index.mobile.html' : 'index.html'),
-      output: sharedRollupOutput,
+      output: sharedRolldownOutput,
     },
   },
   define: sharedRendererDefine({ isMobile, isElectron: false }),
+
   resolve: {
+    tsconfigPaths: true,
     alias: {
       // lexical-code-no-prism from GitHub has no dist; use src for Vite to transpile
       '@lexical/code': path.resolve(__dirname, 'node_modules/lexical-code-no-prism/src/index.ts'),
