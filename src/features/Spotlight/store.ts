@@ -1,18 +1,25 @@
 import { create } from 'zustand';
 
-interface SpotlightState {
+import {
+  chatInitialState,
+  type ChatMessage,
+  createChatActions,
+  type SpotlightChatActions,
+  type SpotlightChatState,
+} from './store/chatActions';
+
+export type { ChatMessage };
+
+interface SpotlightUIState {
   activePlugins: string[];
   agentId: string;
   currentModel: { model: string; provider: string };
   groupId?: string;
   inputValue: string;
-  messages: { content: string; id: string; loading?: boolean; role: 'user' | 'assistant' }[];
-  streaming: boolean;
-  topicId: string | null;
   viewState: 'input' | 'chat';
 }
 
-interface SpotlightActions {
+interface SpotlightUIActions {
   reset: () => void;
   setCurrentModel: (model: { model: string; provider: string }) => void;
   setInputValue: (value: string) => void;
@@ -20,35 +27,47 @@ interface SpotlightActions {
   togglePlugin: (pluginId: string) => void;
 }
 
-const initialState: SpotlightState = {
+type SpotlightStore = SpotlightUIState &
+  SpotlightUIActions &
+  SpotlightChatState &
+  SpotlightChatActions;
+
+const uiInitialState: SpotlightUIState = {
   activePlugins: [],
   agentId: 'default',
   currentModel: { model: '', provider: '' },
   inputValue: '',
-  messages: [],
-  streaming: false,
-  topicId: null,
   viewState: 'input',
 };
 
-export const useSpotlightStore = create<SpotlightState & SpotlightActions>()((set) => ({
-  ...initialState,
+export const useSpotlightStore = create<SpotlightStore>()((...args) => {
+  const [set] = args;
 
-  reset: () => set(initialState),
+  return {
+    ...uiInitialState,
+    ...chatInitialState,
 
-  setCurrentModel: (model) => set({ currentModel: model }),
+    ...createChatActions(...args),
 
-  setInputValue: (value) => set({ inputValue: value }),
+    reset: () => {
+      set({ ...uiInitialState, ...chatInitialState });
+      window.electronAPI?.invoke?.('spotlight:setChatState', false);
+    },
 
-  setViewState: (viewState) => {
-    set({ viewState });
-    window.electronAPI?.invoke?.('spotlight:setChatState', viewState === 'chat');
-  },
+    setCurrentModel: (model) => set({ currentModel: model }),
 
-  togglePlugin: (pluginId) =>
-    set((state) => ({
-      activePlugins: state.activePlugins.includes(pluginId)
-        ? state.activePlugins.filter((id) => id !== pluginId)
-        : [...state.activePlugins, pluginId],
-    })),
-}));
+    setInputValue: (value) => set({ inputValue: value }),
+
+    setViewState: (viewState) => {
+      set({ viewState });
+      window.electronAPI?.invoke?.('spotlight:setChatState', viewState === 'chat');
+    },
+
+    togglePlugin: (pluginId) =>
+      set((state) => ({
+        activePlugins: state.activePlugins.includes(pluginId)
+          ? state.activePlugins.filter((id) => id !== pluginId)
+          : [...state.activePlugins, pluginId],
+      })),
+  };
+});

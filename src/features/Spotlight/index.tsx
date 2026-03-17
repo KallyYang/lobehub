@@ -12,13 +12,19 @@ const SpotlightWindow = memo(() => {
   const inputValue = useSpotlightStore((s) => s.inputValue);
   const setInputValue = useSpotlightStore((s) => s.setInputValue);
   const setViewState = useSpotlightStore((s) => s.setViewState);
+  const sendMessage = useSpotlightStore((s) => s.sendMessage);
 
   const handleHide = useCallback(() => {
+    const { viewState: currentView, streaming } = useSpotlightStore.getState();
+    if (currentView === 'chat' && !streaming) {
+      useSpotlightStore.getState().reset();
+      window.electronAPI?.invoke?.('spotlight:resize', { height: 120, width: 680 });
+    }
     window.electronAPI?.invoke?.('spotlight:hide');
   }, []);
 
   const handleSubmit = useCallback(
-    (value: string) => {
+    async (value: string) => {
       if (value.startsWith('>')) {
         handleHide();
         return;
@@ -34,8 +40,9 @@ const SpotlightWindow = memo(() => {
       }
 
       setInputValue('');
+      await sendMessage(value);
     },
-    [handleHide, viewState, setViewState, setInputValue],
+    [handleHide, viewState, setViewState, setInputValue, sendMessage],
   );
 
   return (
