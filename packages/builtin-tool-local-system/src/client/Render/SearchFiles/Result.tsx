@@ -10,7 +10,7 @@ import FileItem from '../../components/FileItem';
 
 interface SearchFilesProps {
   messageId: string;
-  pluginError: ChatMessagePluginError;
+  pluginError?: ChatMessagePluginError;
   searchResults?: FileResult[];
 }
 

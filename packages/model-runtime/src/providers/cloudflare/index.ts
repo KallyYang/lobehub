@@ -13,6 +13,7 @@ import type { ChatMethodOptions, ChatStreamPayload } from '../../types';
 import { AgentRuntimeErrorType } from '../../types/error';
 import { AgentRuntimeError } from '../../utils/createError';
 import { debugStream } from '../../utils/debugStream';
+import { toHeadersInit } from '../../utils/headers';
 import { StreamingResponse } from '../../utils/response';
 
 export interface CloudflareModelCard {
@@ -61,14 +62,17 @@ export class LobeCloudflareAI implements LobeRuntimeAI {
 
       const { model, tools, apiMode: _, ...restPayload } = payload;
       const functions = tools?.map((tool) => tool.function);
-      const headers = options?.headers || {};
+      const headers = new Headers(toHeadersInit(options?.headers));
       if (this.apiKey) {
-        headers['Authorization'] = `Bearer ${this.apiKey}`;
+        headers.set('Authorization', `Bearer ${this.apiKey}`);
       }
       const url = new URL(model, this.baseURL);
       const response = await fetch(url, {
         body: JSON.stringify({ tools: functions, ...restPayload }),
-        headers: { 'Content-Type': 'application/json', ...headers },
+        headers: new Headers({
+          ...Object.fromEntries(headers.entries()),
+          'Content-Type': 'application/json',
+        }),
         method: 'POST',
         signal: options?.signal,
       });

@@ -3,6 +3,7 @@ import {
   FileIcon,
   FlaskConicalIcon,
   ImageIcon,
+  type LucideIcon,
   MapIcon,
   MusicIcon,
   NewspaperIcon,
@@ -11,7 +12,7 @@ import {
   VideoIcon,
 } from 'lucide-react';
 
-export const CATEGORY_ICON_MAP: Record<string, unknown> = {
+export const CATEGORY_ICON_MAP: Record<string, LucideIcon> = {
   files: FileIcon,
   general: SearchIcon,
   images: ImageIcon,

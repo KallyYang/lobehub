@@ -1,8 +1,7 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import { imageUrlToBase64 } from '@lobechat/utils';
-import type OpenAI from 'openai';
 
-import type { OpenAIChatMessage, UserMessageContentPart } from '../../types';
+import type { ChatCompletionTool, OpenAIChatMessage, UserMessageContentPart } from '../../types';
 import { parseDataUri } from '../../utils/uriParser';
 
 const ANTHROPIC_SUPPORTED_IMAGE_TYPES = new Set([
@@ -341,7 +340,7 @@ export const buildAnthropicMessages = async (
 };
 
 export const buildAnthropicTools = (
-  tools?: OpenAI.ChatCompletionTool[],
+  tools?: ChatCompletionTool[],
   options: { enabledContextCaching?: boolean } = {},
 ) => {
   if (!tools) return;

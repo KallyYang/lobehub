@@ -241,7 +241,7 @@ Result content here`,
       expect(result.messages[0].id).toBe('msg-1');
       expect(result.messages[0].createdAt).toBe(1234567890);
       expect(result.messages[0].extra).toEqual({ foo: 'bar' });
-      expect(result.messages[0].metadata.customField).toBe('value');
+      expect(result.messages[0]!.metadata!.customField).toBe('value');
     });
   });
 });

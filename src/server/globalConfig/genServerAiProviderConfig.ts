@@ -33,6 +33,7 @@ export const genServerAiProvidersConfig = async (
       const providerConfig = specificConfig[provider as keyof typeof specificConfig] || {};
       const modelString =
         process.env[providerConfig.modelListKey ?? `${providerUpperCase}_MODEL_LIST`];
+      const enabledFromEnv = llmConfig[providerConfig.enabledKey || `ENABLED_${providerUpperCase}`];
 
       // Process extractEnabledModels and transformToAiModelList concurrently
       const [enabledModels, serverModelLists] = await Promise.all([
@@ -48,9 +49,11 @@ export const genServerAiProvidersConfig = async (
       return {
         config: {
           enabled:
-            typeof providerConfig.enabled !== 'undefined'
+            typeof providerConfig.enabled === 'boolean'
               ? providerConfig.enabled
-              : llmConfig[providerConfig.enabledKey || `ENABLED_${providerUpperCase}`],
+              : typeof enabledFromEnv === 'boolean'
+                ? enabledFromEnv
+                : false,
           enabledModels,
           serverModelLists,
           ...(providerConfig.fetchOnClient !== undefined && {

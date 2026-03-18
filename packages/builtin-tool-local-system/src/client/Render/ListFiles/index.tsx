@@ -11,7 +11,7 @@ const ListFiles = memo<BuiltinRenderProps<ListLocalFileParams, LocalFileListStat
       <SearchResult
         listResults={pluginState?.listResults}
         messageId={messageId}
-        pluginError={pluginError}
+        pluginError={pluginError || undefined}
       />
     );
   },

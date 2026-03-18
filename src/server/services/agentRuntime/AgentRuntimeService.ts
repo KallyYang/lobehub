@@ -874,16 +874,18 @@ export class AgentRuntimeService {
 
             if (partial) {
               const metadata = agentState?.metadata as any;
+              const stepError =
+                stepResult.newState.error && typeof stepResult.newState.error === 'object'
+                  ? (stepResult.newState.error as Record<string, unknown>)
+                  : undefined;
               const snapshot = {
                 agentId: metadata?.agentId,
                 completedAt: Date.now(),
                 completionReason: reason,
                 error: stepResult.newState.error
                   ? {
-                      message: String(
-                        stepResult.newState.error.message ?? stepResult.newState.error,
-                      ),
-                      type: String(stepResult.newState.error.type ?? 'unknown'),
+                      message: String(stepError?.message ?? stepResult.newState.error),
+                      type: String(stepError?.type ?? 'unknown'),
                     }
                   : undefined,
                 model: partial.model,
@@ -1055,7 +1057,9 @@ export class AgentRuntimeService {
         currentState: {
           cost: currentState.cost,
           costLimit: currentState.costLimit,
-          error: currentState.error,
+          error: currentState.error
+            ? String((currentState.error as { message?: unknown }).message ?? currentState.error)
+            : undefined,
           interruption: currentState.interruption,
           lastModified: currentState.lastModified,
           maxSteps: currentState.maxSteps,

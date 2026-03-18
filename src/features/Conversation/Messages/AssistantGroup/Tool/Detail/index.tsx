@@ -77,7 +77,11 @@ const Render = memo<RenderProps>(
       const StreamingRenderer = getBuiltinStreaming(identifier, apiName);
 
       if (StreamingRenderer) {
-        const args = safeParsePartialJSON(requestArgs);
+        const parsedArgs = safeParsePartialJSON(requestArgs);
+        const args =
+          parsedArgs && typeof parsedArgs === 'object' && !Array.isArray(parsedArgs)
+            ? parsedArgs
+            : {};
 
         return (
           <StreamingRenderer

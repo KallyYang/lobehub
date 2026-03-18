@@ -14,7 +14,7 @@ const SearchFiles = memo<BuiltinRenderProps<LocalSearchFilesParams, LocalFileSea
         <SearchQuery args={args} messageId={messageId} pluginState={pluginState} />
         <SearchResult
           messageId={messageId}
-          pluginError={pluginError}
+          pluginError={pluginError || undefined}
           searchResults={pluginState?.searchResults}
         />
       </Flexbox>

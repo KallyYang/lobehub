@@ -1,5 +1,7 @@
 import type { ModelUsage } from '@lobechat/types';
 
+import type { RuntimeHeaders } from './chat';
+
 export interface EmbeddingsPayload {
   /**
    * The number of dimensions the resulting output embeddings should have. Only
@@ -19,7 +21,7 @@ export interface EmbeddingsPayload {
 }
 
 export interface EmbeddingsOptions {
-  headers?: Record<string, unknown>;
+  headers?: RuntimeHeaders;
   /** Metadata passed to hooks (billing, tracing, etc.) */
   metadata?: Record<string, unknown>;
   onUsage?: (usage: ModelUsage) => void | Promise<void>;

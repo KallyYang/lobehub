@@ -311,7 +311,7 @@ describe('execAgent', () => {
         (m: { role: string }) => m.role === 'assistant',
       );
       expect(assistantMessage).toBeDefined();
-      expect(assistantMessage.content).toBe(responseContent);
+      expect(assistantMessage!.content).toBe(responseContent);
 
       const allMessages = await serverDB
         .select()

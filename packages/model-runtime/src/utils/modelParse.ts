@@ -495,7 +495,13 @@ const processModelCard = (
     return undefined;
   }
 
-  const mergedSettings = mergeSettings(model.settings, knownModel?.settings, options);
+  const mergedSettings = mergeSettings(
+    model.settings && typeof model.settings === 'object'
+      ? (model.settings as AiModelSettings)
+      : undefined,
+    knownModel?.settings,
+    options,
+  );
 
   const formatPricing = (pricing?: {
     cachedInput?: number;
@@ -557,7 +563,7 @@ const processModelCard = (
     contextWindowTokens: model.contextWindowTokens ?? knownModel?.contextWindowTokens ?? undefined,
     description: model.description ?? knownModel?.description ?? '',
     displayName: processDisplayName(model.displayName ?? knownModel?.displayName ?? model.id),
-    enabled: model?.enabled || false,
+    enabled: typeof model.enabled === 'boolean' ? model.enabled : false,
     functionCall:
       model.functionCall ??
       knownModel?.abilities?.functionCall ??
@@ -570,7 +576,18 @@ const processModelCard = (
       ((isKeywordListMatch(model.id.toLowerCase(), imageOutputKeywords) && !isExcludedModel) ||
         false),
     maxOutput: model.maxOutput ?? knownModel?.maxOutput ?? undefined,
-    pricing: formatPricing(model?.pricing) ?? undefined,
+    pricing:
+      formatPricing(
+        model.pricing && typeof model.pricing === 'object'
+          ? (model.pricing as {
+              cachedInput?: number;
+              input?: number;
+              output?: number;
+              units?: any[];
+              writeCacheInput?: number;
+            })
+          : undefined,
+      ) ?? undefined,
     reasoning:
       model.reasoning ??
       knownModel?.abilities?.reasoning ??

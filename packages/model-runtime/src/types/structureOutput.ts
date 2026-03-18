@@ -1,6 +1,6 @@
 import type { ModelUsage } from '@lobechat/types';
 
-import type { ChatCompletionTool } from './chat';
+import type { ChatCompletionTool, RuntimeHeaders } from './chat';
 
 interface GenerateObjectMessage {
   content: string;
@@ -32,7 +32,7 @@ export interface GenerateObjectOptions {
   /**
    * response headers
    */
-  headers?: Record<string, unknown>;
+  headers?: RuntimeHeaders;
 
   /** Metadata passed to hooks (billing, tracing, etc.) */
   metadata?: Record<string, unknown>;

@@ -38,5 +38,5 @@ export const getBuiltinPlaceholder = (
   const toolset = BuiltinToolPlaceholders[identifier];
   if (!toolset) return undefined;
 
-  return toolset[apiName];
+  return toolset[apiName] as BuiltinPlaceholder | undefined;
 };

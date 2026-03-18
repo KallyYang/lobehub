@@ -20,6 +20,7 @@ import { AgentRuntimeErrorType } from '../../types/error';
 import type { CreateImagePayload, CreateImageResponse } from '../../types/image';
 import { AgentRuntimeError } from '../../utils/createError';
 import { debugStream } from '../../utils/debugStream';
+import { toHeadersInit } from '../../utils/headers';
 import { StreamingResponse } from '../../utils/response';
 import { sanitizeError } from '../../utils/sanitizeError';
 
@@ -88,10 +89,16 @@ export class LobeAzureOpenAI implements LobeRuntimeAI {
         : baseParams;
 
       const response = enableStreaming
-        ? await this.client.chat.completions.create({ ...openaiParams, stream: true })
-        : await this.client.chat.completions.create({ ...openaiParams, stream: false });
+        ? await this.client.chat.completions.create({
+            ...(openaiParams as any),
+            stream: true,
+          } as any)
+        : await this.client.chat.completions.create({
+            ...(openaiParams as any),
+            stream: false,
+          } as any);
       if (enableStreaming) {
-        const stream = response as Stream<OpenAI.ChatCompletionChunk>;
+        const stream = response as unknown as Stream<OpenAI.ChatCompletionChunk>;
         const [prod, debug] = stream.tee();
         if (process.env.DEBUG_AZURE_CHAT_COMPLETION === '1') {
           debugStream(debug.toReadableStream()).catch(console.error);
@@ -117,7 +124,7 @@ export class LobeAzureOpenAI implements LobeRuntimeAI {
     try {
       const res = await this.client.embeddings.create(
         { ...payload, encoding_format: 'float', user: options?.user },
-        { headers: options?.headers, signal: options?.signal },
+        { headers: toHeadersInit(options?.headers), signal: options?.signal } as any,
       );
 
       if (res.usage && options?.onUsage) {
@@ -157,7 +164,7 @@ export class LobeAzureOpenAI implements LobeRuntimeAI {
       }
 
       // Backward compatibility: single imageUrl -> image
-      if (userInput.imageUrl && !userInput.image) {
+      if (typeof userInput.imageUrl === 'string' && !userInput.image) {
         userInput.image = await convertImageUrlToFile(userInput.imageUrl);
       }
 
@@ -264,7 +271,7 @@ export class LobeAzureOpenAI implements LobeRuntimeAI {
         cause: (e as any).cause,
         message: (e as any).message,
         name: (e as any).name,
-      } as { [key: string]: unknown; code: string; message: string };
+      } as unknown as { [key: string]: unknown; code: string; message: string };
     }
 
     const errorType = error.code

@@ -128,7 +128,7 @@ describe('ToolCallProcessor', () => {
 
       const result = await processor.process(context);
 
-      expect(result.messages[0].tool_calls[0].thoughtSignature).toBeUndefined();
+      expect(result.messages[0]!.tool_calls![0].thoughtSignature).toBeUndefined();
     });
 
     it('should use custom genToolCallingName function', async () => {
@@ -160,7 +160,7 @@ describe('ToolCallProcessor', () => {
       const result = await processor.process(context);
 
       expect(genToolCallingName).toHaveBeenCalledWith('web', 'search', 'builtin');
-      expect(result.messages[0].tool_calls[0].function.name).toBe('custom_web_search_builtin');
+      expect(result.messages[0]!.tool_calls![0].function.name).toBe('custom_web_search_builtin');
     });
 
     it('should handle multiple tool calls', async () => {
@@ -188,9 +188,9 @@ describe('ToolCallProcessor', () => {
 
       const result = await processor.process(context);
 
-      expect(result.messages[0].tool_calls).toHaveLength(2);
-      expect(result.messages[0].tool_calls[0].function.name).toBe('web.search');
-      expect(result.messages[0].tool_calls[1].function.name).toBe('utils.translate');
+      expect(result.messages[0]!.tool_calls).toHaveLength(2);
+      expect(result.messages[0]!.tool_calls![0].function.name).toBe('web.search');
+      expect(result.messages[0]!.tool_calls![1].function.name).toBe('utils.translate');
     });
 
     it('should remove tool_calls and tools when not supported', async () => {

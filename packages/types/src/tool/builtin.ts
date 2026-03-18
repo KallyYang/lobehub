@@ -2,6 +2,7 @@ import type { PluginSchema } from '@lobehub/chat-plugin-sdk';
 import { type ReactNode } from 'react';
 import { z } from 'zod';
 
+import type { ChatMessagePluginError } from '../message/common/tools';
 import { type RuntimeStepContext } from '../stepContext';
 import { type HumanInterventionConfig, type HumanInterventionPolicy } from './intervention';
 import { HumanInterventionConfigSchema, HumanInterventionPolicySchema } from './intervention';
@@ -58,6 +59,10 @@ export type UnknownRecord = Record<string, unknown>;
 export type ToolArguments = UnknownRecord;
 export type ToolMessageMetadata = UnknownRecord;
 export type ToolSchema = PluginSchema | UnknownRecord;
+
+type BivariantComponent<Props> = {
+  bivarianceHack: (props: Props) => ReactNode;
+}['bivarianceHack'];
 
 export interface DynamicInterventionMetadataOverrides {}
 
@@ -237,13 +242,17 @@ export const LobeBuiltinToolSchema = z.object({
   type: z.literal('builtin'),
 });
 
-export interface BuiltinRenderProps<Arguments = ToolArguments, State = unknown, Content = unknown> {
+export interface BuiltinRenderProps<
+  Arguments extends object = ToolArguments,
+  State = Record<string, unknown>,
+  Content = string,
+> {
   apiName?: string;
   args: Arguments;
   content: Content;
   identifier?: string;
   messageId: string;
-  pluginError?: unknown;
+  pluginError?: ChatMessagePluginError | null;
   pluginState?: State;
   /**
    * The tool call ID from the assistant message
@@ -251,11 +260,18 @@ export interface BuiltinRenderProps<Arguments = ToolArguments, State = unknown, 
   toolCallId?: string;
 }
 
-export type BuiltinRender = <A = ToolArguments, S = unknown, C = unknown>(
+export type BuiltinRender = <
+  A extends object = ToolArguments,
+  S = Record<string, unknown>,
+  C = string,
+>(
   props: BuiltinRenderProps<A, S, C>,
 ) => ReactNode;
 
-export interface BuiltinPortalProps<Arguments = ToolArguments, State = unknown> {
+export interface BuiltinPortalProps<
+  Arguments extends object = ToolArguments,
+  State = Record<string, unknown>,
+> {
   apiName?: string;
   arguments: Arguments;
   identifier: string;
@@ -263,21 +279,26 @@ export interface BuiltinPortalProps<Arguments = ToolArguments, State = unknown> 
   state: State;
 }
 
-export type BuiltinPortal = <A = ToolArguments, S = unknown>(
+export type BuiltinPortal = <A extends object = ToolArguments, S = Record<string, unknown>>(
   props: BuiltinPortalProps<A, S>,
 ) => ReactNode;
 
-export interface BuiltinPlaceholderProps<T extends ToolArguments = ToolArguments> {
+export interface BuiltinPlaceholderProps<T extends object = ToolArguments> {
   apiName: string;
   args?: T;
   identifier: string;
 }
 
-export type BuiltinPlaceholder = (props: BuiltinPlaceholderProps) => ReactNode;
+export type BuiltinPlaceholder<T extends object = ToolArguments> = BivariantComponent<
+  BuiltinPlaceholderProps<T>
+>;
 
 // ==================== Inspector Renderer Types ====================
 
-export interface BuiltinInspectorProps<Arguments = ToolArguments, State = unknown> {
+export interface BuiltinInspectorProps<
+  Arguments extends object = ToolArguments,
+  State = Record<string, unknown>,
+> {
   apiName: string;
   args: Arguments;
   identifier: string;
@@ -292,7 +313,7 @@ export interface BuiltinInspectorProps<Arguments = ToolArguments, State = unknow
   result?: { content: string | null; error?: unknown };
 }
 
-export type BuiltinInspector = <A = ToolArguments, S = unknown>(
+export type BuiltinInspector = <A extends object = ToolArguments, S = Record<string, unknown>>(
   props: BuiltinInspectorProps<A, S>,
 ) => ReactNode;
 
@@ -303,7 +324,7 @@ export type BuiltinInspector = <A = ToolArguments, S = unknown>(
  * Note: During streaming phase, only basic info is available.
  * pluginState and streaming content should be fetched from store inside the component.
  */
-export interface BuiltinStreamingProps<Arguments = ToolArguments> {
+export interface BuiltinStreamingProps<Arguments extends object = ToolArguments> {
   apiName: string;
   args: Arguments;
   identifier: string;
@@ -311,16 +332,18 @@ export interface BuiltinStreamingProps<Arguments = ToolArguments> {
   toolCallId: string;
 }
 
-export type BuiltinStreaming = <A = ToolArguments>(props: BuiltinStreamingProps<A>) => ReactNode;
+export type BuiltinStreaming = <A extends object = ToolArguments>(
+  props: BuiltinStreamingProps<A>,
+) => ReactNode;
 
 export interface BuiltinServerRuntimeOutput {
   content: string;
-  error?: unknown;
-  state?: unknown;
+  error?: any;
+  state?: any;
   success: boolean;
 }
 
-export interface BuiltinInterventionProps<Arguments = ToolArguments> {
+export interface BuiltinInterventionProps<Arguments extends object = ToolArguments> {
   apiName?: string;
   args: Arguments;
   identifier?: string;
@@ -342,7 +365,9 @@ export interface BuiltinInterventionProps<Arguments = ToolArguments> {
   registerBeforeApprove?: (id: string, callback: () => void | Promise<void>) => () => void;
 }
 
-export type BuiltinIntervention = (props: BuiltinInterventionProps) => ReactNode;
+export type BuiltinIntervention<Arguments extends object = ToolArguments> = BivariantComponent<
+  BuiltinInterventionProps<Arguments>
+>;
 
 // ==================== Executor Types ====================
 
@@ -358,11 +383,7 @@ export interface BuiltinToolResult {
   /**
    * Error information if the tool execution failed
    */
-  error?: {
-    body?: unknown;
-    message: string;
-    type: string;
-  };
+  error?: any;
 
   /**
    * Metadata to attach to the tool message
@@ -373,7 +394,7 @@ export interface BuiltinToolResult {
   /**
    * Plugin state for UI rendering
    */
-  state?: unknown;
+  state?: any;
 
   /**
    * Whether to stop the current execution flow

@@ -46,9 +46,14 @@ async function generateByImageMode(
   // If there are imageUrls parameters, convert them to File objects
   if (isImageEdit) {
     try {
+      const imageInput = userInput.image;
+      const imageUrls = Array.isArray(imageInput)
+        ? imageInput.filter((url): url is string => typeof url === 'string')
+        : [];
+
       // Convert all image URLs to File objects
       const imageFiles = await Promise.all(
-        userInput.image.map((url: string) => convertImageUrlToFile(url)),
+        imageUrls.map((url: string) => convertImageUrlToFile(url)),
       );
 
       // According to official docs, if there are multiple images, pass an array; if only one, pass a single File

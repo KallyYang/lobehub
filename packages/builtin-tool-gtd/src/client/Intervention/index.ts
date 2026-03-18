@@ -12,9 +12,9 @@ import CreatePlanIntervention from './CreatePlan';
  * before the tool is executed.
  */
 export const GTDInterventions: Record<string, BuiltinIntervention> = {
-  [GTDApiName.clearTodos]: ClearTodosIntervention as BuiltinIntervention,
-  [GTDApiName.createPlan]: CreatePlanIntervention as BuiltinIntervention,
-  [GTDApiName.createTodos]: AddTodoIntervention as BuiltinIntervention,
+  [GTDApiName.clearTodos]: ClearTodosIntervention as unknown as BuiltinIntervention,
+  [GTDApiName.createPlan]: CreatePlanIntervention as unknown as BuiltinIntervention,
+  [GTDApiName.createTodos]: AddTodoIntervention as unknown as BuiltinIntervention,
 };
 
 export { default as AddTodoIntervention } from './AddTodo';

@@ -85,13 +85,13 @@ describe('AgentManagementContextInjector', () => {
       expect(result.messages).toHaveLength(3);
       expect(result.messages[1].content).toBe('Let @Designer Agent help me');
 
-      const delegationMsg = result.messages[2];
+      const delegationMsg = result.messages[2]!;
       expect(delegationMsg.role).toBe('user');
       expect(delegationMsg.content).toContain('<mentioned_agents>');
       expect(delegationMsg.content).toContain('agt_designer');
       expect(delegationMsg.content).toContain('Designer Agent');
       expect(delegationMsg.content).toContain('MUST use the callAgent tool');
-      expect(delegationMsg.meta.injectType).toBe('agent-mention-delegation');
+      expect(delegationMsg.meta!.injectType).toBe('agent-mention-delegation');
     });
 
     it('should inject after the LAST user message, not the first', async () => {

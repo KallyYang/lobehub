@@ -1,3 +1,5 @@
+import type { RuntimeHeaders } from './chat';
+
 export interface TextToSpeechPayload {
   input: string;
   model: string;
@@ -5,7 +7,7 @@ export interface TextToSpeechPayload {
 }
 
 export interface TextToSpeechOptions {
-  headers?: Record<string, unknown>;
+  headers?: RuntimeHeaders;
   signal?: AbortSignal;
   /**
    * userId for the embeddings

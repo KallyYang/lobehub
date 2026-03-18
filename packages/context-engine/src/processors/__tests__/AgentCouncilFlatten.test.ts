@@ -67,17 +67,17 @@ describe('AgentCouncilFlattenProcessor', () => {
       expect(result.messages).toHaveLength(2);
 
       // Check first assistant message
-      const assistantMsg1 = result.messages[0];
+      const assistantMsg1 = result.messages[0]!;
       expect(assistantMsg1.role).toBe('assistant');
       expect(assistantMsg1.id).toBe('msg-agent-backend-1');
       expect(assistantMsg1.content).toBe('Backend perspective content');
       expect(assistantMsg1.agentId).toBe('agent-backend');
       expect(assistantMsg1.model).toBe('gpt-4');
       expect(assistantMsg1.provider).toBe('openai');
-      expect(assistantMsg1.meta.title).toBe('Backend Developer');
+      expect(assistantMsg1.meta!.title).toBe('Backend Developer');
 
       // Check second assistant message
-      const assistantMsg2 = result.messages[1];
+      const assistantMsg2 = result.messages[1]!;
       expect(assistantMsg2.role).toBe('assistant');
       expect(assistantMsg2.id).toBe('msg-agent-devops-1');
       expect(assistantMsg2.content).toBe('DevOps perspective content');
@@ -140,13 +140,13 @@ describe('AgentCouncilFlattenProcessor', () => {
       expect(result.messages).toHaveLength(2);
 
       // Check assistant message
-      const assistantMsg = result.messages[0];
+      const assistantMsg = result.messages[0]!;
       expect(assistantMsg.role).toBe('assistant');
       expect(assistantMsg.tools).toHaveLength(1);
-      expect(assistantMsg.tools[0].id).toBe('tool-1');
+      expect(assistantMsg.tools![0].id).toBe('tool-1');
 
       // Check tool message
-      const toolMsg = result.messages[1];
+      const toolMsg = result.messages[1]!;
       expect(toolMsg.role).toBe('tool');
       expect(toolMsg.id).toBe('msg-tool-1');
       expect(toolMsg.content).toBe('Search result');
@@ -585,7 +585,7 @@ describe('AgentCouncilFlattenProcessor', () => {
       expect(result.messages[0].agentId).toBe('agent-backend');
       expect(result.messages[0].model).toBe('gpt-4');
       expect(result.messages[0].provider).toBe('openai');
-      expect(result.messages[0].meta.title).toBe('Backend Developer');
+      expect(result.messages[0]!.meta!.title).toBe('Backend Developer');
       expect(result.messages[0].content).toContain('Backend Developer');
 
       // Check second agent (DevOps Engineer)
@@ -593,12 +593,12 @@ describe('AgentCouncilFlattenProcessor', () => {
       expect(result.messages[1].agentId).toBe('agent-devops');
       expect(result.messages[1].model).toBe('claude-3-5-sonnet-20241022');
       expect(result.messages[1].provider).toBe('anthropic');
-      expect(result.messages[1].meta.title).toBe('DevOps Engineer');
+      expect(result.messages[1]!.meta!.title).toBe('DevOps Engineer');
 
       // Check third agent (Software Architect)
       expect(result.messages[2].id).toBe('msg-agent-architect-1');
       expect(result.messages[2].agentId).toBe('agent-architect');
-      expect(result.messages[2].meta.title).toBe('Software Architect');
+      expect(result.messages[2]!.meta!.title).toBe('Software Architect');
 
       // Check metadata
       expect(result.metadata.agentCouncilMessagesFlattened).toBe(1);

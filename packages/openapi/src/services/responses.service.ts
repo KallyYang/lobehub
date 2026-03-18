@@ -129,7 +129,7 @@ export class ResponsesService extends BaseService {
 
         // Handle tool_calls from assistant
         if (hasToolCalls) {
-          for (const toolCall of msg.tool_calls) {
+          for (const toolCall of msg.tool_calls ?? []) {
             output.push({
               arguments: toolCall.function?.arguments ?? '{}',
               call_id: toolCall.id ?? `call_${itemCounter}`,

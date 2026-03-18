@@ -7,7 +7,9 @@ const DEFAULT_PAGE_SIZE = 20;
  * @param request Query parameter object
  * @returns { limit, offset } if pagination parameters are provided; otherwise an empty object
  */
-export function processPaginationConditions(request: Record<string, unknown> & IPaginationQuery): {
+export function processPaginationConditions<T extends IPaginationQuery>(
+  request: T,
+): {
   limit?: number;
   offset?: number;
 } {

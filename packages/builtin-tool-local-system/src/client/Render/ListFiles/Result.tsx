@@ -11,7 +11,7 @@ import FileItem from '../../components/FileItem';
 interface SearchFilesProps {
   listResults?: LocalFileItem[];
   messageId: string;
-  pluginError: ChatMessagePluginError;
+  pluginError?: ChatMessagePluginError;
 }
 
 const SearchFiles = memo<SearchFilesProps>(({ listResults = [], messageId }) => {

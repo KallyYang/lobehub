@@ -104,10 +104,7 @@ export class AgentGroupService {
    * @param agents - Array of agents to merge
    * @returns Merged agents array
    */
-  mergeAgentsDefaultConfig<T extends Record<string, unknown>>(
-    defaultAgentConfig: DefaultAgentConfig,
-    agents: T[],
-  ) {
+  mergeAgentsDefaultConfig<T extends object>(defaultAgentConfig: DefaultAgentConfig, agents: T[]) {
     const userDefaultAgentConfig =
       (defaultAgentConfig as { config?: PartialDeep<LobeAgentConfig> })?.config || {};
 

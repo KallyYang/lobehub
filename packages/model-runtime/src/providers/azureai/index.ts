@@ -142,7 +142,7 @@ export class LobeAzureAI implements LobeRuntimeAI {
           cause: (e as any).cause,
           message: (e as any).message,
           name: (e as any).name,
-        } as { [key: string]: unknown; code: string; message: string };
+        } as unknown as { [key: string]: unknown; code: string; message: string };
       }
 
       const errorType = error.code

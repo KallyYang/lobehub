@@ -6,5 +6,5 @@ import { CreateDocumentPlaceholder } from './CreateDocument';
 export { CreateDocumentPlaceholder } from './CreateDocument';
 
 export const NotebookPlaceholders: Record<string, BuiltinPlaceholder> = {
-  [NotebookApiName.createDocument]: CreateDocumentPlaceholder as BuiltinPlaceholder,
+  [NotebookApiName.createDocument]: CreateDocumentPlaceholder as unknown as BuiltinPlaceholder,
 };

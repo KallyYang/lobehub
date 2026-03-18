@@ -10,12 +10,18 @@ const Inspector = memo<BuiltinPortalProps>(({ arguments: args, messageId, state,
   switch (apiName) {
     // 兼容旧版数据
     case WebBrowsingApiName.search: {
-      return <Search messageId={messageId} query={args as SearchQuery} response={state} />;
+      return (
+        <Search
+          messageId={messageId}
+          query={args as unknown as SearchQuery}
+          response={state as unknown as any}
+        />
+      );
     }
 
     case WebBrowsingApiName.crawlSinglePage: {
       const url = args.url;
-      const result = (state as CrawlPluginState).results.find(
+      const result = (state as unknown as CrawlPluginState).results.find(
         (result) => result.originalUrl === url,
       );
 
@@ -26,8 +32,8 @@ const Inspector = memo<BuiltinPortalProps>(({ arguments: args, messageId, state,
       return (
         <PageContents
           messageId={messageId}
-          results={(state as CrawlPluginState).results}
-          urls={args.urls}
+          results={(state as unknown as CrawlPluginState).results}
+          urls={args.urls as string[]}
         />
       );
     }

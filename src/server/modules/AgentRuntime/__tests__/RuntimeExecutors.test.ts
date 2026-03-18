@@ -94,6 +94,19 @@ describe('RuntimeExecutors', () => {
   });
 
   // Helper to create a valid mock usage object
+  type MockStateMessage = Pick<AgentState['messages'][number], 'content' | 'role'> &
+    Partial<AgentState['messages'][number]>;
+
+  const createMockMessage = (
+    message: MockStateMessage,
+    index = 0,
+  ): AgentState['messages'][number] => ({
+    createdAt: message.createdAt ?? index,
+    id: message.id ?? `msg-${index}`,
+    updatedAt: message.updatedAt ?? index,
+    ...message,
+  });
+
   const createMockUsage = () => ({
     humanInteraction: {
       approvalRequests: 0,
@@ -139,28 +152,34 @@ describe('RuntimeExecutors', () => {
   });
 
   describe('call_llm executor', () => {
-    const createMockState = (overrides?: Partial<AgentState>): AgentState => ({
-      cost: createMockCost(),
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString(),
-      maxSteps: 100,
-      messages: [],
-      metadata: {
-        agentId: 'agent-123',
-        threadId: 'thread-123',
-        topicId: 'topic-123',
-      },
-      modelRuntimeConfig: {
-        model: 'gpt-4',
-        provider: 'openai',
-      },
-      operationId: 'op-123',
-      status: 'running',
-      stepCount: 0,
-      toolManifestMap: {},
-      usage: createMockUsage(),
-      ...overrides,
-    });
+    const createMockState = (
+      overrides?: Omit<Partial<AgentState>, 'messages'> & { messages?: MockStateMessage[] },
+    ): AgentState => {
+      const { messages, ...restOverrides } = overrides ?? {};
+
+      return {
+        cost: createMockCost(),
+        createdAt: new Date().toISOString(),
+        lastModified: new Date().toISOString(),
+        maxSteps: 100,
+        messages: messages?.map(createMockMessage) ?? [],
+        metadata: {
+          agentId: 'agent-123',
+          threadId: 'thread-123',
+          topicId: 'topic-123',
+        },
+        modelRuntimeConfig: {
+          model: 'gpt-4',
+          provider: 'openai',
+        },
+        operationId: 'op-123',
+        status: 'running',
+        stepCount: 0,
+        toolManifestMap: {},
+        usage: createMockUsage(),
+        ...restOverrides,
+      };
+    };
 
     it('should pass parentId from payload.parentId to messageModel.create', async () => {
       const executors = createRuntimeExecutors(ctx);
@@ -530,7 +549,7 @@ describe('RuntimeExecutors', () => {
     });
 
     it('should not duplicate the preserved trailing user message when it is already present in finalized messages', async () => {
-      const preservedMessage = {
+      const preservedMessage: MockStateMessage = {
         content: 'continue with this exact instruction',
         id: 'msg-follow-up',
         role: 'user',
@@ -1369,7 +1388,9 @@ describe('RuntimeExecutors', () => {
 
     it('should refresh messages from database after batch execution', async () => {
       const executors = createRuntimeExecutors(ctx);
-      const state = createMockState({ messages: [{ content: 'old', role: 'user' }] });
+      const state = createMockState({
+        messages: [createMockMessage({ content: 'old', role: 'user' })],
+      });
 
       const instruction = {
         payload: {
@@ -1730,18 +1751,24 @@ describe('RuntimeExecutors', () => {
     it('should store raw UIChatMessage[] from DB after refresh (context re-injected by call_llm)', async () => {
       // DB only stores raw user/assistant/tool messages, NOT MessagesEngine injections
       const dbMessages = [
-        { id: 'msg-1', content: 'What is quantum computing?', role: 'user' },
+        createMockMessage({ id: 'msg-1', content: 'What is quantum computing?', role: 'user' }),
         {
+          createdAt: 1,
           id: 'msg-2',
           content: '',
           role: 'assistant',
-          tool_calls: [{ id: 'tool-call-1', function: { name: 'search', arguments: '{}' } }],
+          tool_calls: [
+            { function: { arguments: '{}', name: 'search' }, id: 'tool-call-1', type: 'function' },
+          ],
+          updatedAt: 1,
         },
         {
+          createdAt: 2,
           id: 'tool-msg-1',
           content: 'Search results...',
           role: 'tool',
           tool_call_id: 'tool-call-1',
+          updatedAt: 2,
         },
       ];
       mockMessageModel.query = vi.fn().mockResolvedValue(dbMessages);
@@ -1751,12 +1778,20 @@ describe('RuntimeExecutors', () => {
       // State before tool execution: messages are raw UIChatMessage[]
       const state = createMockState({
         messages: [
-          { id: 'msg-1', content: 'What is quantum computing?', role: 'user' },
+          createMockMessage({ id: 'msg-1', content: 'What is quantum computing?', role: 'user' }),
           {
+            createdAt: 1,
             id: 'msg-2',
             content: '',
             role: 'assistant',
-            tool_calls: [{ id: 'tool-call-1', function: { name: 'search', arguments: '{}' } }],
+            tool_calls: [
+              {
+                function: { arguments: '{}', name: 'search' },
+                id: 'tool-call-1',
+                type: 'function',
+              },
+            ],
+            updatedAt: 1,
           },
         ],
       });
@@ -1825,8 +1860,8 @@ describe('RuntimeExecutors', () => {
       // State with undefined topicId but has agentId
       const state = createMockState({
         messages: [
-          { content: 'Hello', role: 'user' },
-          { content: 'Response', role: 'assistant', tool_calls: [] },
+          createMockMessage({ content: 'Hello', role: 'user' }),
+          createMockMessage({ content: 'Response', role: 'assistant', tool_calls: [] }),
         ],
         metadata: {
           agentId: 'agent-123',

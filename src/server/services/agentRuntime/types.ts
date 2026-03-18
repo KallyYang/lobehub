@@ -6,12 +6,17 @@ import { type ServerUserMemoryConfig } from '@/server/modules/Mecha/ContextEngin
 
 declare module '@lobechat/agent-runtime' {
   interface AgentStateMetadataOverrides {
-    _stepTracking?: Record<string, unknown>;
+    _stepTracking?: {
+      lastLLMContent?: string;
+      lastToolsCalling?: Array<{ apiName: string; arguments?: string; identifier: string }>;
+      totalToolCalls?: number;
+    };
     agentConfig?: unknown;
     completionWebhook?: {
       body?: Record<string, unknown>;
       url: string;
     };
+    devicePlatform?: string;
     deviceSystemInfo?: Record<string, string>;
     discordContext?: unknown;
     evalContext?: unknown;

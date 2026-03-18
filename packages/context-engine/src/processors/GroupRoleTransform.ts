@@ -144,6 +144,8 @@ export class GroupRoleTransformProcessor extends BaseProcessor {
    * Transform an assistant message from another agent to a user message
    */
   private transformAssistantMessage(msg: Message): Message {
+    if (!msg.agentId) return msg;
+
     const agentInfo = this.config.agentMap[msg.agentId];
     if (!agentInfo) {
       // No agent info found, keep original
@@ -177,6 +179,8 @@ export class GroupRoleTransformProcessor extends BaseProcessor {
    * Transform a tool result message from another agent to a user message
    */
   private transformToolMessage(msg: Message): Message {
+    if (!msg.agentId) return msg;
+
     const agentInfo = this.config.agentMap[msg.agentId];
     if (!agentInfo) {
       // No agent info found, keep original

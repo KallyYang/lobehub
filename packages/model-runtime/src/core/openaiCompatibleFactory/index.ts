@@ -38,6 +38,7 @@ import { desensitizeUrl } from '../../utils/desensitizeUrl';
 import { getModelPropertyWithFallback } from '../../utils/getFallbackModelProperty';
 import { getModelPricing } from '../../utils/getModelPricing';
 import { handleOpenAIError } from '../../utils/handleOpenAIError';
+import { mergeHeaders, toHeadersInit } from '../../utils/headers';
 import { isExceededContextWindowError } from '../../utils/isExceededContextWindowError';
 import { isQuotaLimitError } from '../../utils/isQuotaLimitError';
 import { postProcessModelList } from '../../utils/postProcessModelList';
@@ -67,7 +68,8 @@ export const CHAT_MODELS_BLOCK_LIST = [
   'dall-e',
 ];
 
-type ConstructorOptions<T extends Record<string, any> = Record<string, never>> = ClientOptions & T;
+type ConstructorOptions<T extends Record<string, unknown> = Record<string, unknown>> =
+  ClientOptions & T;
 export type CreateImageOptions = Omit<ClientOptions, 'apiKey'> & {
   apiKey: string;
   provider: string;
@@ -78,7 +80,7 @@ export type CreateVideoOptions = Omit<ClientOptions, 'apiKey'> & {
   provider: string;
 };
 
-export interface CustomClientOptions<T extends Record<string, any> = Record<string, never>> {
+export interface CustomClientOptions<T extends Record<string, unknown> = Record<string, unknown>> {
   createChatCompletionStream?: (
     client: any,
     payload: ChatStreamPayload,
@@ -88,7 +90,7 @@ export interface CustomClientOptions<T extends Record<string, any> = Record<stri
 }
 
 export interface OpenAICompatibleFactoryOptions<
-  T extends Record<string, any> = Record<string, never>,
+  T extends Record<string, unknown> = Record<string, unknown>,
 > {
   apiKey?: string;
   baseURL?: string;
@@ -182,7 +184,7 @@ export interface OpenAICompatibleFactoryOptions<
 }
 
 export const createOpenAICompatibleRuntime = <
-  T extends Record<string, any> = Record<string, never>,
+  T extends Record<string, unknown> = Record<string, unknown>,
 >({
   provider,
   baseURL: DEFAULT_BASE_URL,
@@ -235,7 +237,7 @@ export const createOpenAICompatibleRuntime = <
 
       this.baseURL = baseURL || this.client.baseURL;
 
-      this.id = options.id || provider;
+      this.id = typeof options.id === 'string' ? options.id : provider;
       this.logPrefix = `lobe-model-runtime:${this.id}`;
     }
 
@@ -490,9 +492,9 @@ export const createOpenAICompatibleRuntime = <
 
           response = (await this.client.chat.completions.create(finalPayload, {
             // https://github.com/lobehub/lobe-chat/pull/318
-            headers: { Accept: '*/*', ...options?.requestHeaders },
+            headers: mergeHeaders({ Accept: '*/*' }, options?.requestHeaders),
             signal: options?.signal,
-          })) as unknown as Stream<OpenAI.Chat.Completions.ChatCompletionChunk>;
+          } as any)) as unknown as Stream<OpenAI.Chat.Completions.ChatCompletionChunk>;
         }
 
         if (postPayload.stream) {
@@ -703,10 +705,10 @@ export const createOpenAICompatibleRuntime = <
               messages,
               model,
               tool_choice: { function: { name: tool.function.name }, type: 'function' },
-              tools: [tool],
+              tools: [tool as unknown as OpenAI.ChatCompletionTool],
               user: options?.user,
             },
-            { headers: options?.headers, signal: options?.signal },
+            { headers: toHeadersInit(options?.headers), signal: options?.signal } as any,
           );
 
           if (res.usage) {
@@ -759,7 +761,7 @@ export const createOpenAICompatibleRuntime = <
               text: { format: { strict: true, type: 'json_schema', ...processedSchema } },
               user: options?.user,
             },
-            { headers: options?.headers, signal: options?.signal },
+            { headers: toHeadersInit(options?.headers), signal: options?.signal } as any,
           );
 
           if (res.usage) {
@@ -784,10 +786,13 @@ export const createOpenAICompatibleRuntime = <
           {
             messages,
             model,
-            response_format: { json_schema: processedSchema, type: 'json_schema' },
+            response_format: {
+              json_schema: processedSchema as any,
+              type: 'json_schema',
+            } as any,
             user: options?.user,
           },
-          { headers: options?.headers, signal: options?.signal },
+          { headers: toHeadersInit(options?.headers), signal: options?.signal } as any,
         );
         if (res.usage) {
           await options?.onUsage?.(convertOpenAIUsage(res.usage, usagePayload));
@@ -834,7 +839,7 @@ export const createOpenAICompatibleRuntime = <
       try {
         const res = await this.client.embeddings.create(
           { ...payload, encoding_format: 'float', user: options?.user },
-          { headers: options?.headers, signal: options?.signal },
+          { headers: toHeadersInit(options?.headers), signal: options?.signal } as any,
         );
 
         if (res.usage && options?.onUsage) {
@@ -864,10 +869,13 @@ export const createOpenAICompatibleRuntime = <
       );
 
       try {
-        const mp3 = await this.client.audio.speech.create(payload as any, {
-          headers: options?.headers,
-          signal: options?.signal,
-        });
+        const mp3 = await this.client.audio.speech.create(
+          payload as any,
+          {
+            headers: toHeadersInit(options?.headers),
+            signal: options?.signal,
+          } as any,
+        );
         const buffer = await mp3.arrayBuffer();
         log('generated audio with size: %d bytes', buffer.byteLength);
         return buffer;
@@ -1065,9 +1073,9 @@ export const createOpenAICompatibleRuntime = <
       log('sending responses.create request');
 
       const response = await this.client.responses.create(postPayload, {
-        headers: options?.requestHeaders,
+        headers: toHeadersInit(options?.requestHeaders),
         signal: options?.signal,
-      });
+      } as any);
 
       const streamOptions: OpenAIStreamOptions = {
         bizErrorTypeTransformer: chatCompletion?.handleStreamBizErrorType,
@@ -1174,7 +1182,7 @@ export const createOpenAICompatibleRuntime = <
             tools: tools!.map((tool) => this.convertChatCompletionToolToResponseTool(tool)),
             user: options?.user,
           },
-          { headers: options?.headers, signal: options?.signal },
+          { headers: toHeadersInit(options?.headers), signal: options?.signal } as any,
         );
 
         if (res.usage) {
@@ -1211,10 +1219,10 @@ export const createOpenAICompatibleRuntime = <
           messages: msgs,
           model,
           tool_choice: 'required',
-          tools,
+          tools: tools as unknown as OpenAI.ChatCompletionTool[] | undefined,
           user: options?.user,
         },
-        { headers: options?.headers, signal: options?.signal },
+        { headers: toHeadersInit(options?.headers), signal: options?.signal } as any,
       );
 
       if (res.usage) {

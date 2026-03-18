@@ -259,12 +259,12 @@ const UNSUPPORTED_SCHEMA_KEYS = new Set(['examples', 'default']);
  * Google's API doesn't support certain JSON Schema keywords like 'const'
  * This function recursively processes the schema and converts unsupported keywords
  */
-const sanitizeSchemaForGoogle = (schema: Record<string, unknown>): Record<string, unknown> => {
+const sanitizeSchemaForGoogle = (schema: unknown): unknown => {
   if (!schema || typeof schema !== 'object') return schema;
 
   // Handle arrays
   if (Array.isArray(schema)) {
-    return schema.map((item) => sanitizeSchemaForGoogle(item as Record<string, unknown>));
+    return schema.map((item) => sanitizeSchemaForGoogle(item));
   }
 
   const result: Record<string, unknown> = {};
@@ -291,7 +291,7 @@ const sanitizeSchemaForGoogle = (schema: Record<string, unknown>): Record<string
 
     // Recursively process nested objects
     if (value && typeof value === 'object') {
-      result[key] = sanitizeSchemaForGoogle(value as Record<string, unknown>);
+      result[key] = sanitizeSchemaForGoogle(value);
     } else {
       result[key] = value;
     }
@@ -305,23 +305,34 @@ const sanitizeSchemaForGoogle = (schema: Record<string, unknown>): Record<string
  */
 export const buildGoogleTool = (tool: ChatCompletionTool): FunctionDeclaration => {
   const functionDeclaration = tool.function;
-  const parameters = functionDeclaration.parameters;
+  const parameters =
+    functionDeclaration.parameters && typeof functionDeclaration.parameters === 'object'
+      ? (functionDeclaration.parameters as Record<string, unknown>)
+      : undefined;
   // refs: https://github.com/lobehub/lobe-chat/pull/5002
   const rawProperties =
-    parameters?.properties && Object.keys(parameters.properties).length > 0
+    parameters?.properties &&
+    typeof parameters.properties === 'object' &&
+    !Array.isArray(parameters.properties) &&
+    Object.keys(parameters.properties).length > 0
       ? parameters.properties
       : { dummy: { type: 'string' } }; // dummy property to avoid empty object
 
   // Sanitize properties to remove unsupported JSON Schema keywords for Google
-  const properties = sanitizeSchemaForGoogle(rawProperties);
+  const properties = sanitizeSchemaForGoogle(rawProperties) as Record<string, unknown>;
+  const description =
+    typeof parameters?.description === 'string' ? parameters.description : undefined;
+  const required = Array.isArray(parameters?.required)
+    ? parameters.required.filter((item): item is string => typeof item === 'string')
+    : undefined;
 
   return {
     description: functionDeclaration.description,
     name: functionDeclaration.name,
     parameters: {
-      description: parameters?.description,
-      properties,
-      required: parameters?.required,
+      description,
+      properties: properties as any,
+      required,
       type: SchemaType.OBJECT,
     },
   };

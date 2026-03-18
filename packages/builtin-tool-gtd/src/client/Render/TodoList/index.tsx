@@ -114,12 +114,14 @@ TodoListUI.displayName = 'TodoListUI';
  * TodoList Render component for GTD tool
  * Read-only display of todo items matching the style of AddTodoIntervention
  */
-const TodoListRender = memo<BuiltinRenderProps<unknown, TodoListRenderState>>(({ pluginState }) => {
-  const todos = pluginState?.todos;
-  const items: TodoItem[] = todos?.items || [];
+const TodoListRender = memo<BuiltinRenderProps<Record<string, never>, TodoListRenderState>>(
+  ({ pluginState }) => {
+    const todos = pluginState?.todos;
+    const items: TodoItem[] = todos?.items || [];
 
-  return <TodoListUI items={items} />;
-});
+    return <TodoListUI items={items} />;
+  },
+);
 
 TodoListRender.displayName = 'TodoListRender';
 

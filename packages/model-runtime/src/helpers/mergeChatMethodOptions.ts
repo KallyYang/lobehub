@@ -1,6 +1,7 @@
 import debug from 'debug';
 
 import type { ChatMethodOptions } from '../types/chat';
+import { mergeHeaders } from '../utils/headers';
 
 const log = debug('model-runtime:helpers:mergeChatMethodOptions');
 
@@ -105,21 +106,11 @@ export const mergeMultipleChatMethodOptions = (options: ChatMethodOptions[]): Ch
       },
     },
   };
-  completionOptions.headers = options.reduce((acc, option) => {
-    if (option)
-      return {
-        ...acc,
-        ...option.headers,
-      };
-    return acc;
-  }, {});
-  completionOptions.requestHeaders = options.reduce((acc, option) => {
-    if (option)
-      return {
-        ...acc,
-        ...option.requestHeaders,
-      };
-    return acc;
-  }, {});
+  const headers = mergeHeaders(...options.map((option) => option?.headers));
+  const requestHeaders = mergeHeaders(...options.map((option) => option?.requestHeaders));
+
+  completionOptions.headers = headers;
+  completionOptions.requestHeaders = requestHeaders;
+
   return completionOptions;
 };

@@ -42,6 +42,7 @@ export type GroupAgentCategory =
  * Group Agent Config - similar to LobeAgentConfig but for groups
  */
 export interface GroupAgentConfig {
+  allowDM?: boolean;
   /**
    * Opening message when starting a conversation with the group
    */
@@ -53,6 +54,7 @@ export interface GroupAgentConfig {
   /**
    * System role/prompt for the group
    */
+  revealDM?: boolean;
   systemRole?: string;
 }
 

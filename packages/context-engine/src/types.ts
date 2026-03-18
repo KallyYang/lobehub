@@ -50,8 +50,36 @@ export interface MessageToolCall {
 }
 
 export interface Message extends PipelineMessageOverrides {
-  content: string | unknown[];
+  agentId?: string | 'supervisor';
+  agentName?: string;
+  children?: any[];
+  content: string | any[];
+  createdAt?: number | string;
+  error?: unknown;
+  extra?: any;
+  groupId?: string;
+  id?: string;
+  imageList?: unknown[];
+  members?: any[];
+  meta?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | null;
+  model?: string | null;
+  name?: string;
+  parentId?: string;
+  plugin?: any;
+  pluginError?: unknown;
+  pluginState?: any;
+  provider?: string | null;
+  reasoning?: unknown;
   role: string;
+  targetId?: string | null;
+  tasks?: any[];
+  threadId?: string | null;
+  tool_call_id?: string;
+  tool_calls?: MessageToolCall[];
+  tools?: any[];
+  topicId?: string;
+  updatedAt?: number | string;
 }
 
 /**

@@ -37,18 +37,19 @@ import { handleAnthropicError } from './handleAnthropicError';
 import { resolveCacheTTL } from './resolveCacheTTL';
 import { resolveMaxTokens } from './resolveMaxTokens';
 
-type ConstructorOptions<T extends Record<string, any> = Record<string, never>> = ClientOptions & T;
+type ConstructorOptions<T extends Record<string, unknown> = Record<string, unknown>> =
+  ClientOptions & T;
 
 type AnthropicTools = Anthropic.Tool | Anthropic.WebSearchTool20250305;
 
 export const DEFAULT_ANTHROPIC_BASE_URL = 'https://api.anthropic.com';
 
-export interface CustomClientOptions<T extends Record<string, any> = Record<string, never>> {
+export interface CustomClientOptions<T extends Record<string, unknown> = Record<string, unknown>> {
   createClient?: (options: ConstructorOptions<T>) => Anthropic;
 }
 
 export interface AnthropicCompatibleFactoryOptions<
-  T extends Record<string, any> = Record<string, never>,
+  T extends Record<string, unknown> = Record<string, unknown>,
 > {
   apiKey?: string;
   baseURL?: string;
@@ -457,7 +458,7 @@ export const createAnthropicCompatibleRuntime = <
       }
 
       this.baseURL = baseURL || this.client.baseURL;
-      this.id = options.id || provider;
+      this.id = typeof options.id === 'string' ? options.id : provider;
       this.logPrefix = `lobe-model-runtime:${this.id}`;
     }
 

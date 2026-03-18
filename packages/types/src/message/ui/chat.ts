@@ -13,6 +13,7 @@ import type {
   ChatPluginPayload,
   ChatToolPayload,
   ChatToolPayloadWithResult,
+  MessageToolCall,
   ToolIntervention,
 } from '../common/tools';
 import type { ChatMessageExtra } from './extra';
@@ -215,6 +216,7 @@ export interface UIChatMessage {
   tasks?: UIChatMessage[];
   threadId?: string | null;
   tool_call_id?: string;
+  tool_calls?: MessageToolCall[];
   tools?: ChatToolPayload[];
   /**
    * Messages saved to topic

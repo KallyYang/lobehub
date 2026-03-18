@@ -533,11 +533,15 @@ export const createRuntimeExecutors = (
 
       // ===== 2. Then accumulate to AgentState =====
       const newState = structuredClone(state);
+      const stateMessageTimestamp = Date.now();
 
       newState.messages.push({
         content,
+        createdAt: stateMessageTimestamp,
+        id: assistantMessageItem.id,
         role: 'assistant',
         tool_calls: tool_calls.length > 0 ? tool_calls : undefined,
+        updatedAt: stateMessageTimestamp,
       });
 
       if (currentStepUsage) {
@@ -753,7 +757,7 @@ export const createRuntimeExecutors = (
         compressionResult.messageGroupId,
         summaryContent,
         {
-          agentId: state.metadata?.agentId,
+          agentId: state.metadata!.agentId!,
           threadId: state.metadata?.threadId,
           topicId,
         },
@@ -871,7 +875,7 @@ export const createRuntimeExecutors = (
       const toolName = `${chatToolPayload.identifier}/${chatToolPayload.apiName}`;
 
       // Extract toolResultMaxLength from agent config
-      const agentConfig = state.metadata?.agentConfig;
+      const agentConfig = state.metadata?.agentConfig as any;
       const toolResultMaxLength = agentConfig?.chatConfig?.toolResultMaxLength;
 
       // Build effective manifest map (operation + step-level activations)
@@ -938,11 +942,15 @@ export const createRuntimeExecutors = (
       }
 
       const newState = structuredClone(state);
+      const toolMessageTimestamp = Date.now();
 
       newState.messages.push({
         content: executionResult.content,
+        createdAt: toolMessageTimestamp,
+        id: toolMessageId || chatToolPayload.id,
         role: 'tool',
         tool_call_id: chatToolPayload.id,
+        updatedAt: toolMessageTimestamp,
       });
 
       events.push({ id: chatToolPayload.id, result: executionResult, type: 'tool_result' });
@@ -1103,7 +1111,7 @@ export const createRuntimeExecutors = (
             ),
           };
 
-          const batchAgentConfig = state.metadata?.agentConfig;
+          const batchAgentConfig = state.metadata?.agentConfig as any;
 
           const executionResult = await toolExecutionService.executeTool(chatToolPayload, {
             activeDeviceId: state.metadata?.activeDeviceId,
@@ -1438,10 +1446,14 @@ export const createRuntimeExecutors = (
         );
 
         // Update state messages
+        const abortedToolMessageTimestamp = Date.now();
         newState.messages.push({
           content: 'Tool execution was aborted by user.',
+          createdAt: abortedToolMessageTimestamp,
+          id: toolMessage.id,
           role: 'tool',
           tool_call_id: toolPayload.id,
+          updatedAt: abortedToolMessageTimestamp,
         });
       } catch (error) {
         console.error(

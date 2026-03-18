@@ -74,7 +74,8 @@ interface RouterInstance {
   runtime?: RuntimeClass;
 }
 
-type ConstructorOptions<T extends Record<string, any> = Record<string, never>> = ClientOptions & T;
+type ConstructorOptions<T extends Record<string, unknown> = Record<string, unknown>> =
+  ClientOptions & T;
 
 type Routers =
   | RouterInstance[]
@@ -100,7 +101,9 @@ export interface RouteAttemptResult {
   userId?: string;
 }
 
-export interface CreateRouterRuntimeOptions<T extends Record<string, any> = Record<string, never>> {
+export interface CreateRouterRuntimeOptions<
+  T extends Record<string, unknown> = Record<string, unknown>,
+> {
   apiKey?: string;
   chatCompletion?: {
     excludeUsage?: boolean;
@@ -328,6 +331,8 @@ export const createRouterRuntime = ({
           runtime,
         } = await this.createRuntimeFromOption(matchedRouter, optionItem);
 
+        const userId = typeof this._options.userId === 'string' ? this._options.userId : undefined;
+
         try {
           const result = await requestHandler(runtime);
 
@@ -363,7 +368,7 @@ export const createRouterRuntime = ({
               remark,
               routerId: matchedRouter.id,
               success: true,
-              userId: this._options.userId,
+              userId,
             })
             .catch((e) => {
               log('onRouteAttempt callback error: %O', e);
@@ -386,7 +391,7 @@ export const createRouterRuntime = ({
               remark,
               routerId: matchedRouter.id,
               success: false,
-              userId: this._options.userId,
+              userId,
             })
             .catch((e) => {
               log('onRouteAttempt callback error: %O', e);

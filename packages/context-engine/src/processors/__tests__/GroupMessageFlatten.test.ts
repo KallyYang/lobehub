@@ -56,12 +56,12 @@ describe('GroupMessageFlattenProcessor', () => {
       expect(result.messages).toHaveLength(2);
 
       // Check assistant message
-      const assistantMsg = result.messages[0];
+      const assistantMsg = result.messages[0]!;
       expect(assistantMsg.role).toBe('assistant');
       expect(assistantMsg.id).toBe('msg-1');
       expect(assistantMsg.content).toBe('Checking weather');
       expect(assistantMsg.tools).toHaveLength(1);
-      expect(assistantMsg.tools[0]).toEqual({
+      expect(assistantMsg.tools![0]).toEqual({
         id: 'tool-1',
         type: 'builtin',
         apiName: 'search',
@@ -475,7 +475,7 @@ describe('GroupMessageFlattenProcessor', () => {
       const context = createContext(input);
       const result = await processor.process(context);
 
-      const assistantMsg = result.messages[0];
+      const assistantMsg = result.messages[0]!;
       expect(assistantMsg.parentId).toBe('parent-1');
       expect(assistantMsg.threadId).toBe('thread-1');
       expect(assistantMsg.groupId).toBe('group-1');
@@ -669,8 +669,8 @@ describe('GroupMessageFlattenProcessor', () => {
       expect(assistantMsg.role).toBe('assistant');
       expect(assistantMsg.id).toBe('msg_LnIlOyMUnX1ylf');
       expect(assistantMsg.tools).toHaveLength(1);
-      expect(assistantMsg.tools[0].identifier).toBe('lobe-web-browsing');
-      expect(assistantMsg.tools[0].apiName).toBe('search');
+      expect(assistantMsg.tools![0].identifier).toBe('lobe-web-browsing');
+      expect(assistantMsg.tools![0].apiName).toBe('search');
       expect(assistantMsg.reasoning).toBeDefined();
       expect(assistantMsg.topicId).toBe('tpc_WQ1wRvxdDpLw');
       expect(assistantMsg.parentId).toBe('msg_ekwWzxAKueHkd6');

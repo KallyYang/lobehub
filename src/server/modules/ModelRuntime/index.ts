@@ -53,6 +53,9 @@ const resolveRuntimeProvider = (provider: string, sdkType?: string): string => {
   return sdkType || 'openai';
 };
 
+const getOptionalString = (value: unknown): string | undefined =>
+  typeof value === 'string' ? value : undefined;
+
 /**
  * Build ClientSecretPayload from keyVaults stored in database
  *
@@ -181,7 +184,9 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
         upperProvider = ModelProvider.OpenAI.toUpperCase(); // Use OpenAI options as default
       }
 
-      const apiKey = apiKeyManager.pick(payload?.apiKey || llmConfig[`${upperProvider}_API_KEY`]);
+      const apiKey = apiKeyManager.pick(
+        payload?.apiKey || getOptionalString(llmConfig[`${upperProvider}_API_KEY`]),
+      );
       const baseURL = payload?.baseURL || process.env[`${upperProvider}_PROXY_URL`];
 
       return baseURL ? { apiKey, baseURL } : { apiKey };
@@ -195,25 +200,25 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
 
     case ModelProvider.Azure: {
       const { AZURE_API_KEY, AZURE_API_VERSION, AZURE_ENDPOINT } = llmConfig;
-      const apiKey = apiKeyManager.pick(payload?.apiKey || AZURE_API_KEY);
-      const baseURL = payload?.baseURL || AZURE_ENDPOINT;
-      const apiVersion = payload?.azureApiVersion || AZURE_API_VERSION;
+      const apiKey = apiKeyManager.pick(payload?.apiKey || getOptionalString(AZURE_API_KEY));
+      const baseURL = payload?.baseURL || getOptionalString(AZURE_ENDPOINT);
+      const apiVersion = payload?.azureApiVersion || getOptionalString(AZURE_API_VERSION);
       return { apiKey, apiVersion, baseURL };
     }
 
     case ModelProvider.AzureAI: {
       const { AZUREAI_ENDPOINT, AZUREAI_ENDPOINT_KEY } = llmConfig;
-      const apiKey = payload?.apiKey || AZUREAI_ENDPOINT_KEY;
-      const baseURL = payload?.baseURL || AZUREAI_ENDPOINT;
+      const apiKey = payload?.apiKey || getOptionalString(AZUREAI_ENDPOINT_KEY);
+      const baseURL = payload?.baseURL || getOptionalString(AZUREAI_ENDPOINT);
       return { apiKey, baseURL };
     }
 
     case ModelProvider.Bedrock: {
       const { AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SESSION_TOKEN } = llmConfig;
-      let accessKeyId: string | undefined = AWS_ACCESS_KEY_ID;
-      let accessKeySecret: string | undefined = AWS_SECRET_ACCESS_KEY;
-      let region = AWS_REGION;
-      let sessionToken: string | undefined = AWS_SESSION_TOKEN;
+      let accessKeyId = getOptionalString(AWS_ACCESS_KEY_ID);
+      let accessKeySecret = getOptionalString(AWS_SECRET_ACCESS_KEY);
+      let region = getOptionalString(AWS_REGION);
+      let sessionToken = getOptionalString(AWS_SESSION_TOKEN);
       // if the payload has the api key, use user
       if (payload.apiKey) {
         accessKeyId = payload?.awsAccessKeyId;
@@ -227,11 +232,11 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
     case ModelProvider.Cloudflare: {
       const { CLOUDFLARE_API_KEY, CLOUDFLARE_BASE_URL_OR_ACCOUNT_ID } = llmConfig;
 
-      const apiKey = apiKeyManager.pick(payload?.apiKey || CLOUDFLARE_API_KEY);
+      const apiKey = apiKeyManager.pick(payload?.apiKey || getOptionalString(CLOUDFLARE_API_KEY));
       const baseURLOrAccountID =
         payload.apiKey && payload.cloudflareBaseURLOrAccountID
           ? payload.cloudflareBaseURLOrAccountID
-          : CLOUDFLARE_BASE_URL_OR_ACCOUNT_ID;
+          : getOptionalString(CLOUDFLARE_BASE_URL_OR_ACCOUNT_ID);
 
       return { apiKey, baseURLOrAccountID };
     }
@@ -268,7 +273,11 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
 
       // Parse customHeaders from JSON string (similar to Vertex AI credentials handling)
       // Support both payload object and environment variable JSON string
-      const customHeaders = payload?.customHeaders || safeParseJSON(COMFYUI_CUSTOM_HEADERS);
+      const customHeaders =
+        payload?.customHeaders ||
+        safeParseJSON<Record<string, string | number | boolean | null>>(
+          getOptionalString(COMFYUI_CUSTOM_HEADERS),
+        );
 
       // Return all authentication parameters
       return {
@@ -284,7 +293,7 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
     case ModelProvider.GiteeAI: {
       const { GITEE_AI_API_KEY } = llmConfig;
 
-      const apiKey = apiKeyManager.pick(payload?.apiKey || GITEE_AI_API_KEY);
+      const apiKey = apiKeyManager.pick(payload?.apiKey || getOptionalString(GITEE_AI_API_KEY));
 
       return { apiKey };
     }
@@ -292,7 +301,7 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
     case ModelProvider.Github: {
       const { GITHUB_TOKEN } = llmConfig;
 
-      const apiKey = apiKeyManager.pick(payload?.apiKey || GITHUB_TOKEN);
+      const apiKey = apiKeyManager.pick(payload?.apiKey || getOptionalString(GITHUB_TOKEN));
 
       return { apiKey };
     }
@@ -300,7 +309,7 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
     case ModelProvider.OllamaCloud: {
       const { OLLAMA_CLOUD_API_KEY } = llmConfig;
 
-      const apiKey = apiKeyManager.pick(payload?.apiKey || OLLAMA_CLOUD_API_KEY);
+      const apiKey = apiKeyManager.pick(payload?.apiKey || getOptionalString(OLLAMA_CLOUD_API_KEY));
 
       return { apiKey };
     }
@@ -308,7 +317,9 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
     case ModelProvider.TencentCloud: {
       const { TENCENT_CLOUD_API_KEY } = llmConfig;
 
-      const apiKey = apiKeyManager.pick(payload?.apiKey || TENCENT_CLOUD_API_KEY);
+      const apiKey = apiKeyManager.pick(
+        payload?.apiKey || getOptionalString(TENCENT_CLOUD_API_KEY),
+      );
 
       return { apiKey };
     }

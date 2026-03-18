@@ -1,5 +1,6 @@
 import type { ChatModelCard } from '@lobechat/types';
 import { ModelProvider } from 'model-bank';
+import type OpenAI from 'openai';
 
 import type { OpenAICompatibleFactoryOptions } from '../../core/openaiCompatibleFactory';
 import { createOpenAICompatibleRuntime } from '../../core/openaiCompatibleFactory';
@@ -33,7 +34,7 @@ export const params = {
         messages: payload.messages as any,
         model: payload.model,
         stream: true,
-        ...(payload.tools && { tools: payload.tools }),
+        ...(payload.tools && { tools: payload.tools as unknown as OpenAI.ChatCompletionTool[] }),
       };
     },
     noUserId: true,

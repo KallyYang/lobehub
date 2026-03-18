@@ -11,8 +11,10 @@ import ExecuteTasksIntervention from './ExecuteTasks';
  * before the tool is executed.
  */
 export const GroupManagementInterventions: Record<string, BuiltinIntervention> = {
-  [GroupManagementApiName.executeAgentTask]: ExecuteTaskIntervention as BuiltinIntervention,
-  [GroupManagementApiName.executeAgentTasks]: ExecuteTasksIntervention as BuiltinIntervention,
+  [GroupManagementApiName.executeAgentTask]:
+    ExecuteTaskIntervention as unknown as BuiltinIntervention,
+  [GroupManagementApiName.executeAgentTasks]:
+    ExecuteTasksIntervention as unknown as BuiltinIntervention,
 };
 
 export { default as ExecuteTaskIntervention } from './ExecuteTask';

@@ -11,10 +11,7 @@ export const merge: typeof _merge = <T = object>(target: T, source: T) =>
     if (Array.isArray(obj)) return src;
   });
 
-type MergeableItem = {
-  [key: string]: unknown;
-  id: string;
-};
+type MergeableItem = object & { id: string };
 
 /**
  * Merge two arrays based on id, preserving metadata from default items

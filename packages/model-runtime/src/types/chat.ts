@@ -1,6 +1,8 @@
-import type { ModelPerformance, ModelTokensUsage, ModelUsage } from '@lobechat/types';
+import type { ModelPerformance, ModelTokensUsage, ModelUsage, ToolSchema } from '@lobechat/types';
 
 import type { MessageToolCall, MessageToolCallChunk } from './toolsCalling';
+
+export type RuntimeHeaders = HeadersInit | Record<string, string | undefined>;
 
 export type LLMRoleType = 'user' | 'system' | 'assistant' | 'function' | 'tool';
 
@@ -9,7 +11,7 @@ export type ChatResponseFormat =
   | {
       json_schema: {
         name: string;
-        schema: Record<string, unknown>;
+        schema: ToolSchema;
         strict?: boolean;
       };
       type: 'json_schema';
@@ -173,13 +175,13 @@ export interface ChatMethodOptions {
   /**
    * response headers
    */
-  headers?: Record<string, unknown>;
+  headers?: RuntimeHeaders;
   /** Metadata passed to hooks (billing, tracing, etc.) */
   metadata?: Record<string, unknown>;
   /**
    * send the request to the ai api endpoint
    */
-  requestHeaders?: Record<string, unknown>;
+  requestHeaders?: RuntimeHeaders;
   signal?: AbortSignal;
   /**
    * userId for the chat completion
@@ -205,9 +207,7 @@ export interface ChatCompletionFunctions {
    * @type {{ [key: string]: any }}
    * @memberof ChatCompletionFunctions
    */
-  parameters?: {
-    [key: string]: unknown;
-  };
+  parameters?: ToolSchema;
 }
 
 export interface ChatCompletionTool {

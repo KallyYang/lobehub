@@ -47,5 +47,5 @@ export const getBuiltinIntervention = (
   const toolset = BuiltinToolInterventions[identifier];
   if (!toolset) return undefined;
 
-  return toolset[apiName];
+  return toolset[apiName] as BuiltinIntervention | undefined;
 };
