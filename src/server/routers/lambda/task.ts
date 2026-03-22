@@ -686,7 +686,10 @@ export const taskRouter = router({
                         {
                           messages: payload.messages as any[],
                           model,
-                          schema: TASK_TOPIC_HANDOFF_SCHEMA,
+                          schema: {
+                            name: 'task_topic_handoff',
+                            schema: TASK_TOPIC_HANDOFF_SCHEMA,
+                          },
                         },
                         { metadata: { trigger: 'task-handoff' } },
                       );
