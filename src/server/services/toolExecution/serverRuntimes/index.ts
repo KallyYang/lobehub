@@ -7,6 +7,7 @@
  * - Per-request runtimes (e.g., CloudSandbox - needs topicId, userId)
  */
 import { type ToolExecutionContext } from '../types';
+import { activatorRuntime } from './activator';
 import { calculatorRuntime } from './calculator';
 import { cloudSandboxRuntime } from './cloudSandbox';
 import { localSystemRuntime } from './localSystem';
@@ -15,7 +16,6 @@ import { notebookRuntime } from './notebook';
 import { remoteDeviceRuntime } from './remoteDevice';
 import { skillsRuntime } from './skills';
 import { skillStoreRuntime } from './skillStore';
-import { toolsActivatorRuntime } from './tools';
 import { topicReferenceRuntime } from './topicReference';
 import { type ServerRuntimeFactory, type ServerRuntimeRegistration } from './types';
 import { webBrowsingRuntime } from './webBrowsing';
@@ -43,7 +43,7 @@ registerRuntimes([
   skillStoreRuntime,
   skillsRuntime,
   memoryRuntime,
-  toolsActivatorRuntime,
+  activatorRuntime,
   localSystemRuntime,
   remoteDeviceRuntime,
   topicReferenceRuntime,
