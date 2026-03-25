@@ -147,7 +147,7 @@ describe('KnowledgeBaseCrudAction', () => {
         await result.current.removeKnowledgeBase('kb-to-delete');
       });
 
-      expect(knowledgeBaseService.deleteKnowledgeBase).toHaveBeenCalledWith('kb-to-delete');
+      expect(knowledgeBaseService.deleteKnowledgeBase).toHaveBeenCalledWith('kb-to-delete', true);
       expect(refreshSpy).toHaveBeenCalled();
     });
 
