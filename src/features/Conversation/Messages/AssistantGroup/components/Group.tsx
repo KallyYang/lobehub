@@ -9,6 +9,7 @@ import { messageStateSelectors, useConversationStore } from '../../../store';
 import { MessageAggregationContext } from '../../Contexts/MessageAggregationContext';
 import { CollapsedMessage } from './CollapsedMessage';
 import GroupItem from './GroupItem';
+import WorkflowCollapse from './WorkflowCollapse';
 
 const styles = createStaticStyles(({ css }) => {
   return {
@@ -29,10 +30,61 @@ interface GroupChildrenProps {
   messageIndex: number;
 }
 
+/**
+ * Check if a block contains any tool calls.
+ */
+const hasTools = (block: AssistantContentBlock): boolean => {
+  return !!block.tools && block.tools.length > 0;
+};
+
+/**
+ * Partition blocks into "working phase" and "answer phase".
+ *
+ * Working phase: from first block with tools through last block with tools
+ * (inclusive — interleaved content/reasoning blocks between tool blocks are included).
+ *
+ * Answer phase: all blocks after the last tool block.
+ * Blocks before the first tool block are also treated as answer (pre-content).
+ */
+const partitionBlocks = (
+  blocks: AssistantContentBlock[],
+): { answerBlocks: AssistantContentBlock[]; workingBlocks: AssistantContentBlock[] } => {
+  let lastToolIndex = -1;
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    if (hasTools(blocks[i])) {
+      lastToolIndex = i;
+      break;
+    }
+  }
+
+  if (lastToolIndex === -1) {
+    return { answerBlocks: blocks, workingBlocks: [] };
+  }
+
+  let firstToolIndex = 0;
+  for (let i = 0; i < blocks.length; i++) {
+    if (hasTools(blocks[i])) {
+      firstToolIndex = i;
+      break;
+    }
+  }
+
+  const preBlocks = blocks.slice(0, firstToolIndex);
+  const workingBlocks = blocks.slice(firstToolIndex, lastToolIndex + 1);
+  const answerBlocks = blocks.slice(lastToolIndex + 1);
+
+  return {
+    answerBlocks: [...preBlocks, ...answerBlocks],
+    workingBlocks,
+  };
+};
+
 const Group = memo<GroupChildrenProps>(
   ({ blocks, contentId, disableEditing, messageIndex, id, content }) => {
     const isCollapsed = useConversationStore(messageStateSelectors.isMessageCollapsed(id));
     const contextValue = useMemo(() => ({ assistantGroupId: id }), [id]);
+
+    const { workingBlocks, answerBlocks } = useMemo(() => partitionBlocks(blocks), [blocks]);
 
     if (isCollapsed) {
       return (
@@ -43,21 +95,27 @@ const Group = memo<GroupChildrenProps>(
         )
       );
     }
+
     return (
       <MessageAggregationContext value={contextValue}>
         <Flexbox className={styles.container} gap={8}>
-          {blocks.map((item) => {
-            return (
-              <GroupItem
-                {...item}
-                assistantId={id}
-                contentId={contentId}
-                disableEditing={disableEditing}
-                key={id + '.' + item.id}
-                messageIndex={messageIndex}
-              />
-            );
-          })}
+          {workingBlocks.length > 0 && (
+            <WorkflowCollapse
+              assistantId={id}
+              blocks={workingBlocks}
+              disableEditing={disableEditing}
+            />
+          )}
+          {answerBlocks.map((item) => (
+            <GroupItem
+              {...item}
+              assistantId={id}
+              contentId={contentId}
+              disableEditing={disableEditing}
+              key={id + '.' + item.id}
+              messageIndex={messageIndex}
+            />
+          ))}
         </Flexbox>
       </MessageAggregationContext>
     );
