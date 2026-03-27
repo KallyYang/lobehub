@@ -178,7 +178,9 @@ export const buildDefaultAnthropicPayload = async (
     console.info('[anthropic-compatible] tool summary before request', {
       enabledSearch,
       model,
+      postTools,
       postToolSummary: summarizeAnthropicTools(postTools),
+      tools,
       toolSummary: summarizeChatCompletionTools(tools),
     });
   }
@@ -197,6 +199,7 @@ export const buildDefaultAnthropicPayload = async (
         enabledSearch,
         hasThinking: true,
         model,
+        payloadTools: postTools,
         payloadToolSummary: summarizeAnthropicTools(postTools),
       });
     }
@@ -236,6 +239,7 @@ export const buildDefaultAnthropicPayload = async (
       enabledSearch,
       hasThinking: false,
       model,
+      payloadTools: basePayload.tools,
       payloadToolSummary: summarizeAnthropicTools(basePayload.tools as AnthropicTools[]),
     });
   }

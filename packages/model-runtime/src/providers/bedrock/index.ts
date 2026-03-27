@@ -210,8 +210,10 @@ export class LobeBedrockAI implements LobeRuntimeAI {
     if (tools?.length || postTools?.length) {
       console.info('[bedrock:claude] tool summary before invoke', {
         model,
+        postTools,
         postToolSummary: summarizeAnthropicTools(postTools),
         region: this.region,
+        tools,
         toolSummary: summarizeChatCompletionTools(tools),
       });
     }
@@ -267,6 +269,7 @@ export class LobeBedrockAI implements LobeRuntimeAI {
       console.info('[bedrock:claude] final anthropic payload tool summary', {
         hasThinking: !!thinking,
         model,
+        payloadTools: anthropicPayload.tools,
         payloadToolSummary: summarizeAnthropicTools(anthropicPayload.tools),
         region: this.region,
       });

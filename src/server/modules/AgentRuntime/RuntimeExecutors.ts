@@ -446,6 +446,7 @@ export const createRuntimeExecutors = (
           provider,
           stepIndex,
           threadId: state.metadata?.threadId,
+          tools,
           toolSummary: summarizeChatTools(tools),
           topicId: state.metadata?.topicId,
         });

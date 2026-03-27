@@ -422,7 +422,9 @@ export const buildAnthropicTools = (
     }),
   );
 
+  console.info('[anthropic-tools] buildAnthropicTools input tools', tools);
   console.info('[anthropic-tools] buildAnthropicTools input summary', inputSummary);
+  console.info('[anthropic-tools] buildAnthropicTools output tools', builtTools);
   console.info(
     '[anthropic-tools] buildAnthropicTools output summary',
     summarizeAnthropicTools(builtTools),
