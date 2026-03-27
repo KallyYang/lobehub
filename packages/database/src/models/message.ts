@@ -83,7 +83,7 @@ export interface QueryMessagesOptions {
   /**
    * Post-process function for file URLs
    */
-  postProcessUrl?: (path: string | null, file: { fileType: string }) => Promise<string>;
+  postProcessUrl?: PostProcessUrl;
   /**
    * Topic ID for MessageGroup aggregation queries
    */
@@ -94,13 +94,17 @@ export interface QueryMessagesOptions {
   where?: SQL;
 }
 
+export type PostProcessUrl = (path: string | null, file: { fileType: string }) => Promise<string>;
+
 export class MessageModel {
   private userId: string;
   private db: LobeChatDatabase;
+  private defaultPostProcessUrl?: PostProcessUrl;
 
-  constructor(db: LobeChatDatabase, userId: string) {
+  constructor(db: LobeChatDatabase, userId: string, options?: { postProcessUrl?: PostProcessUrl }) {
     this.userId = userId;
     this.db = db;
+    this.defaultPostProcessUrl = options?.postProcessUrl;
   }
 
   /**
@@ -133,9 +137,11 @@ export class MessageModel {
       threadId,
     }: QueryMessageParams = {},
     options: {
-      postProcessUrl?: (path: string | null, file: { fileType: string }) => Promise<string>;
+      postProcessUrl?: PostProcessUrl;
     } = {},
   ) => {
+    const postProcessUrl = options.postProcessUrl ?? this.defaultPostProcessUrl;
+
     // Build agent condition (handles legacy sessionId lookup)
     let agentCondition: SQL | undefined;
     if (agentId) {
@@ -150,7 +156,7 @@ export class MessageModel {
       return this.queryWithWhere({
         current,
         pageSize,
-        postProcessUrl: options.postProcessUrl,
+        postProcessUrl,
         // Thread queries optionally add agent/session scope if provided
         where: agentCondition ? and(agentCondition, threadCondition) : threadCondition,
       });
@@ -169,7 +175,7 @@ export class MessageModel {
       return this.queryWithWhere({
         current,
         pageSize,
-        postProcessUrl: options.postProcessUrl,
+        postProcessUrl,
         topicId: topicId ?? undefined,
         where: whereCondition,
       });
@@ -186,7 +192,7 @@ export class MessageModel {
     return this.queryWithWhere({
       current,
       pageSize,
-      postProcessUrl: options.postProcessUrl,
+      postProcessUrl,
       topicId: topicId ?? undefined,
       where: whereCondition,
     });
@@ -208,7 +214,13 @@ export class MessageModel {
    * @returns Messages with all related data, including MessageGroup nodes
    */
   queryWithWhere = async (options: QueryMessagesOptions = {}): Promise<UIChatMessage[]> => {
-    const { where, current = 0, pageSize = 1000, postProcessUrl, topicId } = options;
+    const {
+      where,
+      current = 0,
+      pageSize = 1000,
+      postProcessUrl = this.defaultPostProcessUrl,
+      topicId,
+    } = options;
     const offset = current * pageSize;
 
     // 1. get basic messages with joins, excluding messages that belong to MessageGroups
@@ -543,12 +555,12 @@ export class MessageModel {
   queryByIds = async (
     messageIds: string[],
     options: {
-      postProcessUrl?: (path: string | null, file: { fileType: string }) => Promise<string>;
+      postProcessUrl?: PostProcessUrl;
     } = {},
   ): Promise<UIChatMessage[]> => {
     if (messageIds.length === 0) return [];
 
-    const { postProcessUrl } = options;
+    const postProcessUrl = options.postProcessUrl ?? this.defaultPostProcessUrl;
 
     // 1. Query messages with joins
     const result = await this.db
@@ -801,7 +813,7 @@ export class MessageModel {
   private queryMessageGroupNodes = async (
     topicId: string,
     timeRange?: { endTime: Date; startTime: Date },
-    postProcessUrl?: (path: string | null, file: { fileType: string }) => Promise<string>,
+    postProcessUrl?: PostProcessUrl,
   ): Promise<UIChatMessage[]> => {
     // 1. Query MessageGroups for this topic, optionally filtered by time range
     const whereConditions = [

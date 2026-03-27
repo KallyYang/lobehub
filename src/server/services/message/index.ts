@@ -31,30 +31,14 @@ interface CreateMessageResult {
  */
 export class MessageService {
   private messageModel: MessageModel;
-  private fileService: FileService;
   private compressionRepository: CompressionRepository;
 
   constructor(db: LobeChatDatabase, userId: string) {
-    this.messageModel = new MessageModel(db, userId);
-    this.fileService = new FileService(db, userId);
+    const fileService = new FileService(db, userId);
+    this.messageModel = new MessageModel(db, userId, {
+      postProcessUrl: (path) => fileService.getFullFileUrl(path),
+    });
     this.compressionRepository = new CompressionRepository(db, userId);
-  }
-
-  /**
-   * Unified URL processing function
-   */
-  private get postProcessUrl() {
-    return (path: string | null) => this.fileService.getFullFileUrl(path);
-  }
-
-  /**
-   * Unified query options
-   */
-  private getQueryOptions() {
-    return {
-      groupAssistantMessages: false,
-      postProcessUrl: this.postProcessUrl,
-    };
   }
 
   /**
@@ -75,10 +59,13 @@ export class MessageService {
 
     const { agentId, sessionId, topicId, groupId, threadId } = options;
 
-    const messages = await this.messageModel.query(
-      { agentId, groupId, sessionId, threadId, topicId },
-      this.getQueryOptions(),
-    );
+    const messages = await this.messageModel.query({
+      agentId,
+      groupId,
+      sessionId,
+      threadId,
+      topicId,
+    });
 
     return { messages, success: true };
   }
@@ -96,19 +83,14 @@ export class MessageService {
 
     // 2. Query all messages for this agent/topic
     // Use agentId field for query
-    const messages = await this.messageModel.query(
-      {
-        agentId: params.agentId,
-        current: 0,
-        groupId: params.groupId,
-        pageSize: 9999,
-        threadId: params.threadId,
-        topicId: params.topicId,
-      },
-      {
-        postProcessUrl: this.postProcessUrl,
-      },
-    );
+    const messages = await this.messageModel.query({
+      agentId: params.agentId,
+      current: 0,
+      groupId: params.groupId,
+      pageSize: 9999,
+      threadId: params.threadId,
+      topicId: params.topicId,
+    });
 
     // 3. Return the result
     return {
@@ -304,7 +286,7 @@ export class MessageService {
     });
 
     // 3. Query updated messages (compressed messages will be grouped)
-    const messages = await this.messageModel.query({ topicId, ...options }, this.getQueryOptions());
+    const messages = await this.messageModel.query({ topicId, ...options });
 
     return {
       messageGroupId,
@@ -338,7 +320,7 @@ export class MessageService {
 
     // 2. Query final messages
     const queryOptions = { agentId, groupId, threadId, topicId };
-    const finalMessages = await this.messageModel.query(queryOptions, this.getQueryOptions());
+    const finalMessages = await this.messageModel.query(queryOptions);
 
     return {
       messages: finalMessages,
@@ -356,7 +338,7 @@ export class MessageService {
   ): Promise<{ messages: UIChatMessage[] }> {
     await this.compressionRepository.updateMetadata(messageGroupId, metadata);
 
-    const messages = await this.messageModel.query(context, this.getQueryOptions());
+    const messages = await this.messageModel.query(context);
 
     return { messages };
   }
@@ -375,7 +357,7 @@ export class MessageService {
     await this.compressionRepository.deleteCompressionGroup(messageGroupId);
 
     // Query updated messages
-    const messages = await this.messageModel.query(context, this.getQueryOptions());
+    const messages = await this.messageModel.query(context);
 
     return { messages, success: true };
   }

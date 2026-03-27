@@ -200,7 +200,10 @@ export class AiAgentService {
     this.agentDocumentsService = new AgentDocumentsService(db, userId);
     this.agentModel = new AgentModel(db, userId);
     this.agentService = new AgentService(db, userId);
-    this.messageModel = new MessageModel(db, userId);
+    const fileService = new FileService(db, userId);
+    this.messageModel = new MessageModel(db, userId, {
+      postProcessUrl: (path) => fileService.getFullFileUrl(path),
+    });
     this.pluginModel = new PluginModel(db, userId);
     this.threadModel = new ThreadModel(db, userId);
     this.topicModel = new TopicModel(db, userId);
@@ -765,31 +768,20 @@ export class AiAgentService {
     }
 
     // 11. Get existing messages if provided
-    // Use postProcessUrl to resolve S3 keys in imageList to publicly accessible URLs,
-    // matching the frontend flow in aiChatService.getMessagesAndTopics.
-    const fileService = new FileService(this.db, this.userId);
-    const postProcessUrl = (path: string | null) => fileService.getFullFileUrl(path);
-
     let historyMessages: any[] = [];
     if (existingMessageIds.length > 0) {
-      historyMessages = await this.messageModel.query(
-        {
-          sessionId: appContext?.sessionId,
-          topicId: appContext?.topicId ?? undefined,
-        },
-        { postProcessUrl },
-      );
+      historyMessages = await this.messageModel.query({
+        sessionId: appContext?.sessionId,
+        topicId: appContext?.topicId ?? undefined,
+      });
       const idSet = new Set(existingMessageIds);
       historyMessages = historyMessages.filter((msg) => idSet.has(msg.id));
     } else if (appContext?.topicId) {
       // Follow-up message in existing topic: load all history for context
-      historyMessages = await this.messageModel.query(
-        {
-          sessionId: appContext?.sessionId,
-          topicId: appContext.topicId,
-        },
-        { postProcessUrl },
-      );
+      historyMessages = await this.messageModel.query({
+        sessionId: appContext?.sessionId,
+        topicId: appContext.topicId,
+      });
     }
 
     await throwIfExecutionAborted('message history loading');

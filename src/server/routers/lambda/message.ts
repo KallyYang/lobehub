@@ -21,11 +21,15 @@ import { basicContextSchema } from './_schema/context';
 const messageProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
+  const fileService = new FileService(ctx.serverDB, ctx.userId);
+
   return opts.next({
     ctx: {
       compressionRepo: new CompressionRepository(ctx.serverDB, ctx.userId),
-      fileService: new FileService(ctx.serverDB, ctx.userId),
-      messageModel: new MessageModel(ctx.serverDB, ctx.userId),
+      fileService,
+      messageModel: new MessageModel(ctx.serverDB, ctx.userId, {
+        postProcessUrl: (path) => fileService.getFullFileUrl(path),
+      }),
       messageService: new MessageService(ctx.serverDB, ctx.userId),
     },
   });
@@ -201,15 +205,12 @@ export const messageRouter = router({
           ctx.userId ?? undefined,
         );
 
-        const messageModel = new MessageModel(ctx.serverDB, share.ownerId);
         const fileService = new FileService(ctx.serverDB, share.ownerId);
+        const messageModel = new MessageModel(ctx.serverDB, share.ownerId, {
+          postProcessUrl: (path) => fileService.getFullFileUrl(path),
+        });
 
-        return messageModel.query(
-          { ...queryParams, topicId: share.topicId },
-          {
-            postProcessUrl: (path) => fileService.getFullFileUrl(path),
-          },
-        );
+        return messageModel.query({ ...queryParams, topicId: share.topicId });
       }
 
       // Authenticated access - require userId
@@ -217,12 +218,12 @@ export const messageRouter = router({
         throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Authentication required' });
       }
 
-      const messageModel = new MessageModel(ctx.serverDB, ctx.userId);
       const fileService = new FileService(ctx.serverDB, ctx.userId);
-
-      return messageModel.query(queryParams, {
+      const messageModel = new MessageModel(ctx.serverDB, ctx.userId, {
         postProcessUrl: (path) => fileService.getFullFileUrl(path),
       });
+
+      return messageModel.query(queryParams);
     }),
 
   rankModels: messageProcedure.query(async ({ ctx }) => {

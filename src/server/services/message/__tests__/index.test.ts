@@ -60,12 +60,11 @@ describe('MessageService', () => {
       const result = await messageService.removeMessage(messageId, { sessionId: 'session-1' });
 
       expect(mockMessageModel.deleteMessage).toHaveBeenCalledWith(messageId);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        { groupId: undefined, sessionId: 'session-1', topicId: undefined },
-        expect.objectContaining({
-          groupAssistantMessages: false,
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        groupId: undefined,
+        sessionId: 'session-1',
+        topicId: undefined,
+      });
       expect(result).toEqual({ messages: mockMessages, success: true });
     });
 
@@ -77,12 +76,11 @@ describe('MessageService', () => {
       const result = await messageService.removeMessage(messageId, { topicId: 'topic-1' });
 
       expect(mockMessageModel.deleteMessage).toHaveBeenCalledWith(messageId);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        { groupId: undefined, sessionId: undefined, topicId: 'topic-1' },
-        expect.objectContaining({
-          groupAssistantMessages: false,
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        groupId: undefined,
+        sessionId: undefined,
+        topicId: 'topic-1',
+      });
       expect(result).toEqual({ messages: mockMessages, success: true });
     });
   });
@@ -261,12 +259,11 @@ describe('MessageService', () => {
       });
 
       expect(mockMessageModel.updateMetadata).toHaveBeenCalledWith(messageId, metadata);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        { groupId: undefined, sessionId: undefined, topicId: 'topic-1' },
-        expect.objectContaining({
-          groupAssistantMessages: false,
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        groupId: undefined,
+        sessionId: undefined,
+        topicId: 'topic-1',
+      });
       expect(result).toEqual({ messages: mockMessages, success: true });
     });
   });
@@ -287,19 +284,14 @@ describe('MessageService', () => {
       const result = await messageService.createMessage(params as any);
 
       expect(mockMessageModel.create).toHaveBeenCalledWith(params);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        {
-          agentId: 'agent-1',
-          current: 0,
-          groupId: undefined,
-          pageSize: 9999,
-          threadId: undefined,
-          topicId: undefined,
-        },
-        expect.objectContaining({
-          postProcessUrl: expect.any(Function),
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        agentId: 'agent-1',
+        current: 0,
+        groupId: undefined,
+        pageSize: 9999,
+        threadId: undefined,
+        topicId: undefined,
+      });
       expect(result).toEqual({
         id: 'msg-1',
         messages: mockMessages,
@@ -322,19 +314,14 @@ describe('MessageService', () => {
 
       const result = await messageService.createMessage(params as any);
 
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        {
-          agentId: 'agent-1',
-          current: 0,
-          groupId: 'group-1',
-          pageSize: 9999,
-          threadId: undefined,
-          topicId: 'topic-1',
-        },
-        expect.objectContaining({
-          postProcessUrl: expect.any(Function),
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        agentId: 'agent-1',
+        current: 0,
+        groupId: 'group-1',
+        pageSize: 9999,
+        threadId: undefined,
+        topicId: 'topic-1',
+      });
       expect(result.id).toBe('msg-1');
       expect(result.messages).toEqual(mockMessages);
     });
@@ -357,19 +344,14 @@ describe('MessageService', () => {
       const result = await messageService.createMessage(params as any);
 
       expect(mockMessageModel.create).toHaveBeenCalledWith(params);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        {
-          agentId: 'agent-1',
-          current: 0,
-          groupId: 'group-1',
-          pageSize: 9999,
-          threadId: 'thread-1',
-          topicId: 'topic-1',
-        },
-        expect.objectContaining({
-          postProcessUrl: expect.any(Function),
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        agentId: 'agent-1',
+        current: 0,
+        groupId: 'group-1',
+        pageSize: 9999,
+        threadId: 'thread-1',
+        topicId: 'topic-1',
+      });
       expect(result.id).toBe('msg-1');
       expect(result.messages).toEqual(mockMessages);
     });
@@ -387,12 +369,11 @@ describe('MessageService', () => {
       const result = await messageService.removeMessage(messageId, { groupId, topicId });
 
       expect(mockMessageModel.deleteMessage).toHaveBeenCalledWith(messageId);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        { groupId, sessionId: undefined, topicId },
-        expect.objectContaining({
-          groupAssistantMessages: false,
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        groupId,
+        sessionId: undefined,
+        topicId,
+      });
       expect(result).toEqual({ messages: mockMessages, success: true });
     });
 
@@ -404,12 +385,11 @@ describe('MessageService', () => {
       const result = await messageService.removeMessages(messageIds, { groupId, topicId });
 
       expect(mockMessageModel.deleteMessages).toHaveBeenCalledWith(messageIds);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        { groupId, sessionId: undefined, topicId },
-        expect.objectContaining({
-          groupAssistantMessages: false,
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        groupId,
+        sessionId: undefined,
+        topicId,
+      });
       expect(result).toEqual({ messages: mockMessages, success: true });
     });
 
@@ -425,12 +405,11 @@ describe('MessageService', () => {
       });
 
       expect(mockMessageModel.update).toHaveBeenCalledWith(messageId, value);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        { groupId, sessionId: undefined, topicId },
-        expect.objectContaining({
-          groupAssistantMessages: false,
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        groupId,
+        sessionId: undefined,
+        topicId,
+      });
       expect(result).toEqual({ messages: mockMessages, success: true });
     });
 
@@ -446,12 +425,11 @@ describe('MessageService', () => {
       });
 
       expect(mockMessageModel.updateMetadata).toHaveBeenCalledWith(messageId, metadata);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        { groupId, sessionId: undefined, topicId },
-        expect.objectContaining({
-          groupAssistantMessages: false,
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        groupId,
+        sessionId: undefined,
+        topicId,
+      });
       expect(result).toEqual({ messages: mockMessages, success: true });
     });
 
@@ -467,12 +445,11 @@ describe('MessageService', () => {
       });
 
       expect(mockMessageModel.updatePluginState).toHaveBeenCalledWith(messageId, state);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        { groupId, sessionId: undefined, topicId },
-        expect.objectContaining({
-          groupAssistantMessages: false,
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        groupId,
+        sessionId: undefined,
+        topicId,
+      });
       expect(result).toEqual({ messages: mockMessages, success: true });
     });
 
@@ -488,12 +465,11 @@ describe('MessageService', () => {
       });
 
       expect(mockMessageModel.updateMessagePlugin).toHaveBeenCalledWith(messageId, { error });
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        { groupId, sessionId: undefined, topicId },
-        expect.objectContaining({
-          groupAssistantMessages: false,
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        groupId,
+        sessionId: undefined,
+        topicId,
+      });
       expect(result).toEqual({ messages: mockMessages, success: true });
     });
 
@@ -509,12 +485,11 @@ describe('MessageService', () => {
       });
 
       expect(mockMessageModel.updateMessageRAG).toHaveBeenCalledWith(messageId, ragValue);
-      expect(mockMessageModel.query).toHaveBeenCalledWith(
-        { groupId, sessionId: undefined, topicId },
-        expect.objectContaining({
-          groupAssistantMessages: false,
-        }),
-      );
+      expect(mockMessageModel.query).toHaveBeenCalledWith({
+        groupId,
+        sessionId: undefined,
+        topicId,
+      });
       expect(result).toEqual({ messages: mockMessages, success: true });
     });
   });

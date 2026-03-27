@@ -33,10 +33,12 @@ describe('AiChatService', () => {
       sessionId: 's1',
     });
 
-    expect(mockQueryMessages).toHaveBeenCalledWith(
-      { agentId: 'agent-1', groupId: 'group-1', includeTopic: true, sessionId: 's1' },
-      expect.objectContaining({ postProcessUrl: expect.any(Function) }),
-    );
+    expect(mockQueryMessages).toHaveBeenCalledWith({
+      agentId: 'agent-1',
+      groupId: 'group-1',
+      includeTopic: true,
+      sessionId: 's1',
+    });
     expect(mockQueryTopics).toHaveBeenCalledWith({ agentId: 'agent-1', groupId: 'group-1' });
     expect(res.messages).toEqual([{ id: 'm1' }]);
     expect(res.topics).toEqual([{ id: 't1' }]);
