@@ -10,7 +10,12 @@ import { ModelProvider } from 'model-bank';
 import { resolveCacheTTL } from '../../core/anthropicCompatibleFactory/resolveCacheTTL';
 import { resolveMaxTokens } from '../../core/anthropicCompatibleFactory/resolveMaxTokens';
 import type { LobeRuntimeAI } from '../../core/BaseAI';
-import { buildAnthropicMessages, buildAnthropicTools } from '../../core/contextBuilders/anthropic';
+import {
+  buildAnthropicMessages,
+  buildAnthropicTools,
+  summarizeAnthropicTools,
+  summarizeChatCompletionTools,
+} from '../../core/contextBuilders/anthropic';
 import { resolveModelSamplingParameters } from '../../core/parameterResolver';
 import {
   AWSBedrockClaudeStream,
@@ -202,6 +207,15 @@ export class LobeBedrockAI implements LobeRuntimeAI {
       enabledContextCaching,
     });
 
+    if (tools?.length || postTools?.length) {
+      console.info('[bedrock:claude] tool summary before invoke', {
+        model,
+        postToolSummary: summarizeAnthropicTools(postTools),
+        region: this.region,
+        toolSummary: summarizeChatCompletionTools(tools),
+      });
+    }
+
     const postMessages = await buildAnthropicMessages(user_messages, { enabledContextCaching });
 
     // Claude 4.6 models do not support assistant turn prefill
@@ -249,6 +263,15 @@ export class LobeBedrockAI implements LobeRuntimeAI {
       };
     }
 
+    if (tools?.length || postTools?.length) {
+      console.info('[bedrock:claude] final anthropic payload tool summary', {
+        hasThinking: !!thinking,
+        model,
+        payloadToolSummary: summarizeAnthropicTools(anthropicPayload.tools),
+        region: this.region,
+      });
+    }
+
     const command = new InvokeModelWithResponseStreamCommand({
       accept: 'application/json',
       body: JSON.stringify(anthropicPayload),
@@ -257,6 +280,11 @@ export class LobeBedrockAI implements LobeRuntimeAI {
     });
 
     try {
+      console.info('[bedrock:claude] invokeClaudeModel called', {
+        model,
+        region: this.region,
+        toolCount: tools?.length ?? 0,
+      });
       // Ask Claude for a streaming chat completion given the prompt
       const res = await this.client.send(command, { abortSignal: options?.signal });
 

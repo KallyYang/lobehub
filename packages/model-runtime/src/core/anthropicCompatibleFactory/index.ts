@@ -28,6 +28,8 @@ import {
   buildAnthropicMessages,
   buildAnthropicTools,
   buildSearchTool,
+  summarizeAnthropicTools,
+  summarizeChatCompletionTools,
 } from '../contextBuilders/anthropic';
 import { resolveModelSamplingParameters } from '../parameterResolver';
 import { AnthropicStream } from '../streams';
@@ -172,6 +174,15 @@ export const buildDefaultAnthropicPayload = async (
     postTools = postTools?.length ? [...postTools, webSearchTool] : [webSearchTool];
   }
 
+  if (model.includes('claude') && (tools?.length || postTools?.length)) {
+    console.info('[anthropic-compatible] tool summary before request', {
+      enabledSearch,
+      model,
+      postToolSummary: summarizeAnthropicTools(postTools),
+      toolSummary: summarizeChatCompletionTools(tools),
+    });
+  }
+
   if (!!thinking && (thinking.type === 'enabled' || thinking.type === 'adaptive')) {
     const resolvedThinking: Anthropic.MessageCreateParams['thinking'] =
       thinking.type === 'enabled'
@@ -180,6 +191,15 @@ export const buildDefaultAnthropicPayload = async (
             type: 'enabled',
           }
         : { type: 'adaptive' };
+
+    if (model.includes('claude') && postTools?.length) {
+      console.info('[anthropic-compatible] final payload tool summary', {
+        enabledSearch,
+        hasThinking: true,
+        model,
+        payloadToolSummary: summarizeAnthropicTools(postTools),
+      });
+    }
 
     return {
       max_tokens: resolvedMaxTokens,
@@ -210,6 +230,15 @@ export const buildDefaultAnthropicPayload = async (
     tools: postTools as Anthropic.MessageCreateParams['tools'],
     top_p: resolvedSamplingParams.top_p,
   };
+
+  if (model.includes('claude') && postTools?.length) {
+    console.info('[anthropic-compatible] final payload tool summary', {
+      enabledSearch,
+      hasThinking: false,
+      model,
+      payloadToolSummary: summarizeAnthropicTools(basePayload.tools as AnthropicTools[]),
+    });
+  }
 
   // If effort is specified without thinking mode, add output_config
   if (effort) {

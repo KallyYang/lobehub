@@ -13,6 +13,69 @@ const ANTHROPIC_SUPPORTED_IMAGE_TYPES = new Set([
   'image/webp',
 ]);
 
+const getRecord = (value: unknown): Record<string, unknown> | undefined =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
+
+const getSchemaPropertyKeys = (schema: unknown) => {
+  const properties = getRecord(getRecord(schema)?.properties);
+
+  return properties ? Object.keys(properties).slice(0, 20) : [];
+};
+
+export const summarizeChatCompletionTools = (tools?: OpenAI.ChatCompletionTool[]) => {
+  if (!tools) return;
+
+  return tools.map((tool, index) => {
+    const rawTool = getRecord(tool);
+    const customTool = getRecord(rawTool?.custom);
+    const functionTool = getRecord(rawTool?.function);
+    const parameters = functionTool?.parameters;
+    const customInputSchema = customTool?.input_schema;
+
+    return {
+      customKeys: customTool ? Object.keys(customTool).sort() : undefined,
+      customName: typeof customTool?.name === 'string' ? customTool.name : undefined,
+      functionKeys: functionTool ? Object.keys(functionTool).sort() : undefined,
+      hasCustomInputSchema: customInputSchema !== undefined,
+      hasFunction: !!functionTool,
+      hasParameters: parameters !== undefined,
+      index,
+      name:
+        typeof functionTool?.name === 'string'
+          ? functionTool.name
+          : typeof customTool?.name === 'string'
+            ? customTool.name
+            : undefined,
+      rawKeys: rawTool ? Object.keys(rawTool).sort() : [],
+      schemaPropertyKeys:
+        getSchemaPropertyKeys(parameters).length > 0
+          ? getSchemaPropertyKeys(parameters)
+          : getSchemaPropertyKeys(customInputSchema),
+      type: typeof rawTool?.type === 'string' ? rawTool.type : undefined,
+    };
+  });
+};
+
+export const summarizeAnthropicTools = (
+  tools?: (Anthropic.Tool | Anthropic.WebSearchTool20250305)[],
+) => {
+  if (!tools) return;
+
+  return tools.map((tool, index) => {
+    const rawTool = getRecord(tool);
+    const inputSchema = rawTool?.input_schema;
+
+    return {
+      hasInputSchema: inputSchema !== undefined,
+      index,
+      keys: rawTool ? Object.keys(rawTool).sort() : [],
+      name: typeof rawTool?.name === 'string' ? rawTool.name : undefined,
+      schemaPropertyKeys: getSchemaPropertyKeys(inputSchema),
+      type: typeof rawTool?.type === 'string' ? rawTool.type : 'custom',
+    };
+  });
+};
+
 const isImageTypeSupported = (mimeType: string | null): boolean => {
   if (!mimeType) return true;
   return ANTHROPIC_SUPPORTED_IMAGE_TYPES.has(mimeType.toLowerCase());
@@ -346,7 +409,8 @@ export const buildAnthropicTools = (
 ) => {
   if (!tools) return;
 
-  return tools.map(
+  const inputSummary = summarizeChatCompletionTools(tools);
+  const builtTools = tools.map(
     (tool, index): Anthropic.Tool => ({
       cache_control:
         options.enabledContextCaching && index === tools.length - 1
@@ -357,6 +421,14 @@ export const buildAnthropicTools = (
       name: tool.function.name,
     }),
   );
+
+  console.info('[anthropic-tools] buildAnthropicTools input summary', inputSummary);
+  console.info(
+    '[anthropic-tools] buildAnthropicTools output summary',
+    summarizeAnthropicTools(builtTools),
+  );
+
+  return builtTools;
 };
 
 export const buildSearchTool = (): Anthropic.WebSearchTool20250305 => {

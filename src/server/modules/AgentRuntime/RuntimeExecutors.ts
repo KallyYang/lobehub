@@ -57,6 +57,31 @@ const normalizeDocumentPosition = (
     : undefined;
 };
 
+const summarizeChatTools = (tools: CallLLMPayload['tools']) =>
+  tools?.map((tool, index) => {
+    const rawTool = tool as Record<string, any>;
+    const functionTool = rawTool?.function as Record<string, any> | undefined;
+    const customTool = rawTool?.custom as Record<string, any> | undefined;
+
+    return {
+      customKeys: customTool ? Object.keys(customTool).sort() : undefined,
+      customName: typeof customTool?.name === 'string' ? customTool.name : undefined,
+      functionKeys: functionTool ? Object.keys(functionTool).sort() : undefined,
+      hasCustomInputSchema: customTool?.input_schema !== undefined,
+      hasFunction: !!functionTool,
+      hasParameters: functionTool?.parameters !== undefined,
+      index,
+      name:
+        typeof functionTool?.name === 'string'
+          ? functionTool.name
+          : typeof customTool?.name === 'string'
+            ? customTool.name
+            : undefined,
+      rawKeys: rawTool ? Object.keys(rawTool).sort() : [],
+      type: typeof rawTool?.type === 'string' ? rawTool.type : undefined,
+    };
+  });
+
 // Tool pricing configuration (USD per call)
 const TOOL_PRICING: Record<string, number> = {
   'lobe-web-browsing/craw': 0,
@@ -412,6 +437,19 @@ export const createRuntimeExecutors = (
         processedMessages.length,
         tools?.length ?? 0,
       );
+
+      if (model.includes('claude') && tools?.length) {
+        console.info('[agent-runtime:call-llm] claude tools before model-runtime.chat', {
+          agentId: state.metadata?.agentId,
+          model,
+          operationId,
+          provider,
+          stepIndex,
+          threadId: state.metadata?.threadId,
+          toolSummary: summarizeChatTools(tools),
+          topicId: state.metadata?.topicId,
+        });
+      }
 
       // Buffer: accumulate text and reasoning, send every 50ms
       const BUFFER_INTERVAL = 50;
