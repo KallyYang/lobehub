@@ -21,14 +21,17 @@ import { basicContextSchema } from './_schema/context';
 const messageProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
-  const fileService = new FileService(ctx.serverDB, ctx.userId);
+  let fileService: FileService | undefined;
+  const getFileService = () => {
+    if (!fileService) fileService = new FileService(ctx.serverDB, ctx.userId);
+    return fileService;
+  };
 
   return opts.next({
     ctx: {
       compressionRepo: new CompressionRepository(ctx.serverDB, ctx.userId),
-      fileService,
       messageModel: new MessageModel(ctx.serverDB, ctx.userId, {
-        postProcessUrl: (path) => fileService.getFullFileUrl(path),
+        postProcessUrl: (path) => getFileService().getFullFileUrl(path),
       }),
       messageService: new MessageService(ctx.serverDB, ctx.userId),
     },

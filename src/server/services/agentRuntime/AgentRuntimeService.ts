@@ -158,9 +158,12 @@ export class AgentRuntimeService {
     this.snapshotStore = options?.snapshotStore ?? this.createDefaultSnapshotStore();
     this.serverDB = db;
     this.userId = userId;
-    const fileService = new FileService(db, this.userId);
+    let fileService: FileService | undefined;
     this.messageModel = new MessageModel(db, this.userId, {
-      postProcessUrl: (path) => fileService.getFullFileUrl(path),
+      postProcessUrl: (path) => {
+        if (!fileService) fileService = new FileService(db, this.userId);
+        return fileService.getFullFileUrl(path);
+      },
     });
 
     // Initialize ToolExecutionService with dependencies
