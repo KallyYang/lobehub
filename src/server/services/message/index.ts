@@ -268,10 +268,7 @@ export class MessageService {
     success: boolean;
   }> {
     // 1. Get messages that need to be summarized (before marking them as compressed)
-    const allMessages = await this.messageModel.query(
-      { topicId, ...options },
-      this.getQueryOptions(),
-    );
+    const allMessages = await this.messageModel.query({ topicId, ...options });
 
     const messagesToSummarize = allMessages.filter((msg) => messageIds.includes(msg.id));
 
