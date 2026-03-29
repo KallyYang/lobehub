@@ -130,6 +130,14 @@ const linkOptions = {
     // Only include provider in JWT for image operations
     // For other operations (like knowledge base embedding), let server use its own config
     const headers = await createHeaderWithAuth(provider ? { provider } : undefined);
+
+    // Inject workspace context header
+    const { getWorkspaceStoreState } = await import('@/store/workspace');
+    const workspaceId = getWorkspaceStoreState().activeWorkspaceId;
+    if (workspaceId) {
+      (headers as Record<string, string>)['X-Workspace-Id'] = workspaceId;
+    }
+
     log('Headers: %O', headers);
     return headers;
   },
