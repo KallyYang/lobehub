@@ -5,14 +5,14 @@ import { SessionModel } from '@/database/models/session';
 import { SessionGroupModel } from '@/database/models/sessionGroup';
 import { insertAgentSchema, insertSessionSchema } from '@/database/schemas';
 import { getServerDB } from '@/database/server';
-import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
+import { publicProcedure, router, workspaceProcedure } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { AgentChatConfigSchema } from '@/types/agent';
 import { LobeMetaDataSchema } from '@/types/meta';
 import { type BatchTaskResult } from '@/types/service';
 import { type ChatSessionList, type LobeGroupSession } from '@/types/session';
 
-const sessionProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
+const sessionProcedure = workspaceProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
   return opts.next({

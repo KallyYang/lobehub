@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { MessageModel } from '@/database/models/message';
 import { TopicShareModel } from '@/database/models/topicShare';
 import { CompressionRepository } from '@/database/repositories/compression';
-import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
+import { publicProcedure, router, workspaceProcedure } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { FileService } from '@/server/services/file';
 import { MessageService } from '@/server/services/message';
@@ -18,7 +18,7 @@ import { MessageService } from '@/server/services/message';
 import { resolveAgentIdFromSession, resolveContext } from './_helpers/resolveContext';
 import { basicContextSchema } from './_schema/context';
 
-const messageProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
+const messageProcedure = workspaceProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
   return opts.next({

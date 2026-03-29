@@ -14,7 +14,7 @@ import { TopicShareModel } from '@/database/models/topicShare';
 import { AgentMigrationRepo } from '@/database/repositories/agentMigration';
 import { TopicImporterRepo } from '@/database/repositories/topicImporter';
 import { agents, chatGroups, chatGroupsAgents } from '@/database/schemas';
-import { authedProcedure, router } from '@/libs/trpc/lambda';
+import { router, workspaceProcedure } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { type BatchTaskResult } from '@/types/service';
 
@@ -25,7 +25,7 @@ import {
 } from './_helpers/resolveContext';
 import { basicContextSchema } from './_schema/context';
 
-const topicProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
+const topicProcedure = workspaceProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
 
   return opts.next({
