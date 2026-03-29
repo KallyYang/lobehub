@@ -70,7 +70,7 @@ const AgentInfoDescription = memo<AgentInfoDescriptionProps>(
     ttsConfig,
   }) => {
     const { t } = useTranslation('setting');
-    // 转换远程数据格式
+    // Convert remote data format
     const getProcessedData = () => {
       if (!isRemote || !meta) {
         return {
@@ -87,7 +87,7 @@ const AgentInfoDescription = memo<AgentInfoDescriptionProps>(
         };
       }
 
-      // 远程数据格式转换
+      // Remote data format conversion
       const remoteData = meta;
       const config = remoteData.config || {};
 
@@ -129,14 +129,14 @@ const AgentInfoDescription = memo<AgentInfoDescriptionProps>(
     const renderAvatar = (avatar: string | undefined) => {
       if (!avatar) return unsetText;
 
-      // 如果是 http 或 https 链接，显示图片
+      // If the avatar is an http or https URL, display as an image
       if (avatar.startsWith('http://') || avatar.startsWith('https://')) {
         return (
           <Image alt="avatar" height={40} src={avatar} style={{ borderRadius: '50%' }} width={40} />
         );
       }
 
-      // 否则直接显示字符（emoji）
+      // Otherwise display the character directly (emoji)
       return (
         <div
           style={{
