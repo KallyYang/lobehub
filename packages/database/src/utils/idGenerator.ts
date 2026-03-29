@@ -30,6 +30,7 @@ const prefixes = {
   threads: 'thd',
   topics: 'tpc',
   user: 'user',
+  workspaceAuditLogs: 'wsal',
   workspaceInvitations: 'wsinv',
   workspaces: 'ws',
 } as const;

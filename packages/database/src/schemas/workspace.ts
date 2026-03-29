@@ -117,3 +117,44 @@ export const workspaceInvitations = pgTable(
 
 export type NewWorkspaceInvitation = typeof workspaceInvitations.$inferInsert;
 export type WorkspaceInvitationItem = typeof workspaceInvitations.$inferSelect;
+
+// ======= workspace_audit_logs ======= //
+
+export const workspaceAuditLogs = pgTable(
+  'workspace_audit_logs',
+  {
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => idGenerator('workspaceAuditLogs'))
+      .notNull(),
+
+    workspaceId: text('workspace_id')
+      .references(() => workspaces.id, { onDelete: 'cascade' })
+      .notNull(),
+    userId: text('user_id')
+      .references(() => users.id, { onDelete: 'set null' }),
+
+    // Action identifier, e.g. 'member.invited', 'agent.created', 'provider.updated'
+    action: text('action').notNull(),
+
+    // Resource info
+    resourceType: text('resource_type'), // 'member', 'agent', 'kb', 'provider', 'settings'
+    resourceId: text('resource_id'),
+
+    // Additional context
+    metadata: jsonb('metadata').default({}),
+    ipAddress: text('ip_address'),
+
+    createdAt: createdAt(),
+  },
+  (table) => [
+    index('workspace_audit_logs_workspace_id_idx').on(table.workspaceId),
+    index('workspace_audit_logs_user_id_idx').on(table.userId),
+    index('workspace_audit_logs_action_idx').on(table.action),
+    index('workspace_audit_logs_resource_type_idx').on(table.resourceType),
+    index('workspace_audit_logs_created_at_idx').on(table.createdAt),
+  ],
+);
+
+export type NewWorkspaceAuditLog = typeof workspaceAuditLogs.$inferInsert;
+export type WorkspaceAuditLogItem = typeof workspaceAuditLogs.$inferSelect;
