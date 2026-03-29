@@ -19,6 +19,7 @@ import { chatGroups } from './chatGroup';
 import { documents } from './file';
 import { sessions } from './session';
 import { users } from './user';
+import { workspaces } from './workspace';
 
 export const topics = pgTable(
   'topics',
@@ -36,6 +37,7 @@ export const topics = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
     clientId: text('client_id'),
     description: text('description'),
     historySummary: text('history_summary'),
@@ -52,6 +54,7 @@ export const topics = pgTable(
     index('topics_group_id_idx').on(t.groupId),
     index('topics_agent_id_idx').on(t.agentId),
     index('topics_trigger_idx').on(t.trigger),
+    index('topics_workspace_id_idx').on(t.workspaceId),
     index('topics_extract_status_gin_idx').using(
       'gin',
       sql`(metadata->'userMemoryExtractStatus') jsonb_path_ops`,
@@ -102,6 +105,7 @@ export const threads = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
 
     lastActiveAt: timestamptz('last_active_at').defaultNow(),
     ...timestamps,
@@ -114,6 +118,7 @@ export const threads = pgTable(
     index('threads_agent_id_idx').on(t.agentId),
     index('threads_group_id_idx').on(t.groupId),
     index('threads_parent_thread_id_idx').on(t.parentThreadId),
+    index('threads_workspace_id_idx').on(t.workspaceId),
   ],
 );
 

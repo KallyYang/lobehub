@@ -4,6 +4,7 @@ import { createInsertSchema } from 'drizzle-zod';
 import { idGenerator, randomSlug } from '../utils/idGenerator';
 import { timestamps } from './_helpers';
 import { users } from './user';
+import { workspaces } from './workspace';
 
 //  ======= sessionGroups ======= //
 
@@ -20,6 +21,8 @@ export const sessionGroups = pgTable(
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
 
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
+
     clientId: text('client_id'),
     ...timestamps,
   },
@@ -29,6 +32,7 @@ export const sessionGroups = pgTable(
       table.userId,
     ),
     userIdIdx: index('session_groups_user_id_idx').on(table.userId),
+    workspaceIdIdx: index('session_groups_workspace_id_idx').on(table.workspaceId),
   }),
 );
 
@@ -58,6 +62,7 @@ export const sessions = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
     groupId: text('group_id').references(() => sessionGroups.id, { onDelete: 'set null' }),
     clientId: text('client_id'),
     pinned: boolean('pinned').default(false),
@@ -72,6 +77,7 @@ export const sessions = pgTable(
     index('sessions_id_user_id_idx').on(t.id, t.userId),
     index('sessions_user_id_updated_at_idx').on(t.userId, t.updatedAt),
     index('sessions_group_id_idx').on(t.groupId),
+    index('sessions_workspace_id_idx').on(t.workspaceId),
   ],
 );
 

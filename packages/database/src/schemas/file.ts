@@ -21,6 +21,7 @@ import { idGenerator, randomSlug } from '../utils/idGenerator';
 import { accessedAt, createdAt, timestamps } from './_helpers';
 import { asyncTasks } from './asyncTask';
 import { users } from './user';
+import { workspaces } from './workspace';
 
 export const globalFiles = pgTable(
   'global_files',
@@ -93,6 +94,7 @@ export const documents = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
     clientId: text('client_id'),
 
     editorData: jsonb('editor_data').$type<Record<string, any>>(),
@@ -110,6 +112,7 @@ export const documents = pgTable(
     index('documents_file_id_idx').on(table.fileId),
     index('documents_parent_id_idx').on(table.parentId),
     index('documents_knowledge_base_id_idx').on(table.knowledgeBaseId),
+    index('documents_workspace_id_idx').on(table.workspaceId),
     uniqueIndex('documents_client_id_user_id_unique').on(table.clientId, table.userId),
     uniqueIndex('documents_slug_user_id_unique')
       .on(table.slug, table.userId)
@@ -131,6 +134,7 @@ export const files = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
     /**
      * mime
      */
@@ -164,6 +168,7 @@ export const files = pgTable(
     return {
       fileHashIdx: index('file_hash_idx').on(table.fileHash),
       userIdIdx: index('files_user_id_idx').on(table.userId),
+      workspaceIdIdx: index('files_workspace_id_idx').on(table.workspaceId),
       parentIdIdx: index('files_parent_id_idx').on(table.parentId),
       chunkTaskIdIdx: index('files_chunk_task_id_idx').on(table.chunkTaskId),
       embeddingTaskIdIdx: index('files_embedding_task_id_idx').on(table.embeddingTaskId),
@@ -193,6 +198,7 @@ export const knowledgeBases = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
     clientId: text('client_id'),
 
     isPublic: boolean('is_public').default(false),
@@ -204,6 +210,7 @@ export const knowledgeBases = pgTable(
   (t) => [
     uniqueIndex('knowledge_bases_client_id_user_id_unique').on(t.clientId, t.userId),
     index('knowledge_bases_user_id_idx').on(t.userId),
+    index('knowledge_bases_workspace_id_idx').on(t.workspaceId),
   ],
 );
 

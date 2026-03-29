@@ -13,6 +13,7 @@ import type { AiModelSettings } from 'model-bank';
 
 import { timestamps } from './_helpers';
 import { users } from './user';
+import { workspaces } from './workspace';
 
 export const aiProviders = pgTable(
   'ai_providers',
@@ -23,6 +24,7 @@ export const aiProviders = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
 
     sort: integer('sort'),
     enabled: boolean('enabled'),
@@ -47,6 +49,7 @@ export const aiProviders = pgTable(
   (table) => [
     primaryKey({ columns: [table.id, table.userId] }),
     index('ai_providers_user_id_idx').on(table.userId),
+    index('ai_providers_workspace_id_idx').on(table.workspaceId),
   ],
 );
 
@@ -68,6 +71,7 @@ export const aiModels = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
     pricing: jsonb('pricing'),
     parameters: jsonb('parameters').default({}),
     config: jsonb('config'),
@@ -82,6 +86,7 @@ export const aiModels = pgTable(
   (table) => [
     primaryKey({ columns: [table.id, table.providerId, table.userId] }),
     index('ai_models_user_id_idx').on(table.userId),
+    index('ai_models_workspace_id_idx').on(table.workspaceId),
   ],
 );
 

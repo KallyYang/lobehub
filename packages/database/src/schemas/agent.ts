@@ -22,6 +22,7 @@ import { timestamps } from './_helpers';
 import { files, knowledgeBases } from './file';
 import { sessionGroups } from './session';
 import { users } from './user';
+import { workspaces } from './workspace';
 
 // Agent table is the main table for storing agents
 // agent is a model that represents the assistant that is created by the user
@@ -50,6 +51,8 @@ export const agents = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
 
     agencyConfig: jsonb('agency_config').$type<LobeAgentAgencyConfig>(),
     chatConfig: jsonb('chat_config').$type<LobeAgentChatConfig>(),
@@ -80,6 +83,7 @@ export const agents = pgTable(
     index('agents_title_idx').on(t.title),
     index('agents_description_idx').on(t.description),
     index('agents_session_group_id_idx').on(t.sessionGroupId),
+    index('agents_workspace_id_idx').on(t.workspaceId),
   ],
 );
 

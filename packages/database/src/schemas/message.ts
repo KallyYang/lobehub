@@ -21,6 +21,7 @@ import { chunks, embeddings } from './rag';
 import { sessions } from './session';
 import { threads, topics } from './topic';
 import { users } from './user';
+import { workspaces } from './workspace';
 
 /**
  * Message groups table for multi-models parallel conversations
@@ -115,6 +116,7 @@ export const messages = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+    workspaceId: text('workspace_id').references(() => workspaces.id, { onDelete: 'cascade' }),
     /**
      * we might deprecate sessionId in the future
      */
@@ -149,6 +151,7 @@ export const messages = pgTable(
     index('messages_agent_id_idx').on(table.agentId),
     index('messages_group_id_idx').on(table.groupId),
     index('messages_message_group_id_idx').on(table.messageGroupId),
+    index('messages_workspace_id_idx').on(table.workspaceId),
   ],
 );
 
