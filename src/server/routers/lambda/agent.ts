@@ -16,15 +16,16 @@ import { AgentService } from '@/server/services/agent';
 
 const agentProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+  const wsId = ctx.workspaceId ?? undefined;
 
   return opts.next({
     ctx: {
-      agentModel: new AgentModel(ctx.serverDB, ctx.userId),
+      agentModel: new AgentModel(ctx.serverDB, ctx.userId, wsId),
       agentService: new AgentService(ctx.serverDB, ctx.userId),
       chatGroupModel: new ChatGroupModel(ctx.serverDB, ctx.userId),
-      fileModel: new FileModel(ctx.serverDB, ctx.userId),
-      knowledgeBaseModel: new KnowledgeBaseModel(ctx.serverDB, ctx.userId),
-      sessionModel: new SessionModel(ctx.serverDB, ctx.userId),
+      fileModel: new FileModel(ctx.serverDB, ctx.userId, wsId),
+      knowledgeBaseModel: new KnowledgeBaseModel(ctx.serverDB, ctx.userId, wsId),
+      sessionModel: new SessionModel(ctx.serverDB, ctx.userId, wsId),
     },
   });
 });

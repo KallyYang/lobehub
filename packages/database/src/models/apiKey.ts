@@ -22,11 +22,13 @@ export class ApiKeyModel {
 
   private userId: string;
   private db: LobeChatDatabase;
+  private workspaceId?: string;
   private gateKeeperPromise: Promise<KeyVaultsGateKeeper> | null = null;
 
-  constructor(db: LobeChatDatabase, userId: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
     this.userId = userId;
     this.db = db;
+    this.workspaceId = workspaceId;
   }
 
   private async getGateKeeper() {
@@ -45,7 +47,7 @@ export class ApiKeyModel {
 
     const [result] = await this.db
       .insert(apiKeys)
-      .values({ ...params, key: encryptedKey, keyHash, userId: this.userId })
+      .values({ ...params, key: encryptedKey, keyHash, userId: this.userId, workspaceId: this.workspaceId })
       .returning();
 
     return result;

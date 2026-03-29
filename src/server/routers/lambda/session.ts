@@ -14,11 +14,12 @@ import { type ChatSessionList, type LobeGroupSession } from '@/types/session';
 
 const sessionProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+  const wsId = ctx.workspaceId ?? undefined;
 
   return opts.next({
     ctx: {
-      sessionGroupModel: new SessionGroupModel(ctx.serverDB, ctx.userId),
-      sessionModel: new SessionModel(ctx.serverDB, ctx.userId),
+      sessionGroupModel: new SessionGroupModel(ctx.serverDB, ctx.userId, wsId),
+      sessionModel: new SessionModel(ctx.serverDB, ctx.userId, wsId),
     },
   });
 });
@@ -101,7 +102,8 @@ export const sessionRouter = router({
     if (!userId) return { sessionGroups: [], sessions: [] };
 
     const serverDB = await getServerDB();
-    const sessionModel = new SessionModel(serverDB, userId);
+    const wsId = ctx.workspaceId ?? undefined;
+    const sessionModel = new SessionModel(serverDB, userId, wsId);
     const chatGroupModel = new ChatGroupModel(serverDB, userId);
 
     const [{ sessions, sessionGroups }, chatGroups] = await Promise.all([

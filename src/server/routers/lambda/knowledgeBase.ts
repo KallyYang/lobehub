@@ -9,10 +9,11 @@ import { type KnowledgeBaseItem } from '@/types/knowledgeBase';
 
 const knowledgeBaseProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+  const wsId = ctx.workspaceId ?? undefined;
 
   return opts.next({
     ctx: {
-      knowledgeBaseModel: new KnowledgeBaseModel(ctx.serverDB, ctx.userId),
+      knowledgeBaseModel: new KnowledgeBaseModel(ctx.serverDB, ctx.userId, wsId),
     },
   });
 });

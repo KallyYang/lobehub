@@ -97,10 +97,12 @@ export interface QueryMessagesOptions {
 export class MessageModel {
   private userId: string;
   private db: LobeChatDatabase;
+  private workspaceId?: string;
 
-  constructor(db: LobeChatDatabase, userId: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
     this.userId = userId;
     this.db = db;
+    this.workspaceId = workspaceId;
   }
 
   /**
@@ -1273,6 +1275,7 @@ export class MessageModel {
           provider: fromProvider,
           updatedAt: updatedAt ? new Date(updatedAt) : undefined,
           userId: this.userId,
+          workspaceId: this.workspaceId,
         })
         .returning()) as DBMessageItem[];
 
@@ -1321,7 +1324,7 @@ export class MessageModel {
   batchCreate = async (newMessages: DBMessageItem[]) => {
     const messagesToInsert = newMessages.map((m) => {
       // TODO: need a better way to handle this
-      return { ...m, role: m.role as any, userId: this.userId };
+      return { ...m, role: m.role as any, userId: this.userId, workspaceId: this.workspaceId };
     });
 
     const topicIds = [...new Set(newMessages.map((m) => m.topicId).filter(Boolean))] as string[];

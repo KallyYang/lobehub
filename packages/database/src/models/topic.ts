@@ -52,10 +52,12 @@ export interface ListTopicsForMemoryExtractorCursor {
 export class TopicModel {
   private userId: string;
   private db: LobeChatDatabase;
+  private workspaceId?: string;
 
-  constructor(db: LobeChatDatabase, userId: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
     this.userId = userId;
     this.db = db;
+    this.workspaceId = workspaceId;
   }
   // **************** Query *************** //
 
@@ -415,6 +417,7 @@ export class TopicModel {
         id,
         sessionId: params.sessionId || null,
         userId: this.userId,
+        workspaceId: this.workspaceId,
       };
 
       // Insert new topic
@@ -448,6 +451,7 @@ export class TopicModel {
             title: params.title,
             trigger: params.trigger,
             userId: this.userId,
+            workspaceId: this.workspaceId,
           })),
         )
         .returning();
@@ -488,6 +492,7 @@ export class TopicModel {
           clientId: null,
           id: this.genId(),
           title: newTitle || originalTopic?.title,
+          workspaceId: this.workspaceId,
         })
         .returning();
 

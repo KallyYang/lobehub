@@ -6,10 +6,11 @@ import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 
 const apiKeyProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+  const wsId = ctx.workspaceId ?? undefined;
 
   return opts.next({
     ctx: {
-      apiKeyModel: new ApiKeyModel(ctx.serverDB, ctx.userId),
+      apiKeyModel: new ApiKeyModel(ctx.serverDB, ctx.userId, wsId),
     },
   });
 });

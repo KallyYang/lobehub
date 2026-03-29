@@ -18,10 +18,12 @@ import type { LobeChatDatabase, Transaction } from '../type';
 export class FileModel {
   private readonly userId: string;
   private db: LobeChatDatabase;
+  private workspaceId?: string;
 
-  constructor(db: LobeChatDatabase, userId: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
     this.userId = userId;
     this.db = db;
+    this.workspaceId = workspaceId;
   }
 
   /**
@@ -64,7 +66,7 @@ export class FileModel {
 
       const result = (await tx
         .insert(files)
-        .values({ ...params, userId: this.userId })
+        .values({ ...params, userId: this.userId, workspaceId: this.workspaceId })
         .returning()) as FileItem[];
 
       const item = result[0]!;

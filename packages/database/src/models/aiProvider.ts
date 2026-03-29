@@ -23,10 +23,12 @@ type EncryptUserKeyVaults = (keyVaults: string) => Promise<string>;
 export class AiProviderModel {
   private userId: string;
   private db: LobeChatDatabase;
+  private workspaceId?: string;
 
-  constructor(db: LobeChatDatabase, userId: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
     this.userId = userId;
     this.db = db;
+    this.workspaceId = workspaceId;
   }
 
   create = async (
@@ -45,6 +47,7 @@ export class AiProviderModel {
         enabled: true,
         keyVaults,
         userId: this.userId,
+        workspaceId: this.workspaceId,
       })
       .returning();
 
@@ -148,6 +151,7 @@ export class AiProviderModel {
         id,
         source: this.getProviderSource(id),
         userId: this.userId,
+        workspaceId: this.workspaceId,
       })
       .onConflictDoUpdate({
         set: commonFields,
@@ -164,6 +168,7 @@ export class AiProviderModel {
         source: this.getProviderSource(id),
         updatedAt: new Date(),
         userId: this.userId,
+        workspaceId: this.workspaceId,
       })
       .onConflictDoUpdate({
         set: { enabled },
@@ -183,6 +188,7 @@ export class AiProviderModel {
             source: this.getProviderSource(id),
             updatedAt: new Date(),
             userId: this.userId,
+            workspaceId: this.workspaceId,
           })
           .onConflictDoUpdate({
             set: { sort, updatedAt: new Date() },
@@ -223,7 +229,7 @@ export class AiProviderModel {
       if (this.isBuiltInProvider(id)) {
         await this.db
           .insert(aiProviders)
-          .values({ id, source: 'builtin', userId: this.userId })
+          .values({ id, source: 'builtin', userId: this.userId, workspaceId: this.workspaceId })
           .onConflictDoNothing();
 
         const resultAgain = await query;

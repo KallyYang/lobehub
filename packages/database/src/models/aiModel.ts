@@ -14,10 +14,12 @@ import type { LobeChatDatabase } from '../type';
 export class AiModelModel {
   private userId: string;
   private db: LobeChatDatabase;
+  private workspaceId?: string;
 
-  constructor(db: LobeChatDatabase, userId: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
     this.userId = userId;
     this.db = db;
+    this.workspaceId = workspaceId;
   }
 
   /**
@@ -37,6 +39,7 @@ export class AiModelModel {
         enabled: params.enabled ?? true, // enabled by default, but respect explicit value
         source: AiModelSourceEnum.Custom,
         userId: this.userId,
+        workspaceId: this.workspaceId,
       })
       .returning();
 
@@ -127,7 +130,7 @@ export class AiModelModel {
   update = async (id: string, providerId: string, value: Partial<AiModelSelectItem>) => {
     return this.db
       .insert(aiModels)
-      .values({ ...value, id, providerId, updatedAt: new Date(), userId: this.userId })
+      .values({ ...value, id, providerId, updatedAt: new Date(), userId: this.userId, workspaceId: this.workspaceId })
       .onConflictDoUpdate({
         set: value,
         target: [aiModels.id, aiModels.providerId, aiModels.userId],
@@ -140,6 +143,7 @@ export class AiModelModel {
       ...value,
       updatedAt: now,
       userId: this.userId,
+      workspaceId: this.workspaceId,
     } as typeof aiModels.$inferInsert;
 
     if (value.type) insertValues.type = value.type;
@@ -172,6 +176,7 @@ export class AiModelModel {
       providerId,
       updatedAt: new Date(),
       userId: this.userId,
+      workspaceId: this.workspaceId,
     }));
 
     return this.db
@@ -204,6 +209,7 @@ export class AiModelModel {
         source: AiModelSourceEnum.Builtin,
         updatedAt: new Date(),
         userId: this.userId,
+        workspaceId: this.workspaceId,
       };
 
       // Preserve type if available from default model list
@@ -262,6 +268,7 @@ export class AiModelModel {
           // source: isBuiltin ? 'builtin' : 'custom',
           updatedAt: now,
           userId: this.userId,
+          workspaceId: this.workspaceId,
         };
 
         if (type) insertValues.type = type;

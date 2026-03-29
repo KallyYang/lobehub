@@ -19,6 +19,7 @@ import { type ProviderConfig } from '@/types/user/settings';
 
 const aiProviderProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+  const wsId = ctx.workspaceId ?? undefined;
 
   const { aiProvider } = await getServerGlobalConfig();
 
@@ -30,7 +31,7 @@ const aiProviderProcedure = authedProcedure.use(serverDatabase).use(async (opts)
         ctx.userId,
         aiProvider as Record<string, ProviderConfig>,
       ),
-      aiProviderModel: new AiProviderModel(ctx.serverDB, ctx.userId),
+      aiProviderModel: new AiProviderModel(ctx.serverDB, ctx.userId, wsId),
       gateKeeper,
       userModel: new UserModel(ctx.serverDB, ctx.userId),
     },

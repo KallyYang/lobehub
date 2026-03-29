@@ -8,10 +8,11 @@ import { type SessionGroupItem } from '@/types/session';
 
 const sessionProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+  const wsId = ctx.workspaceId ?? undefined;
 
   return opts.next({
     ctx: {
-      sessionGroupModel: new SessionGroupModel(ctx.serverDB, ctx.userId),
+      sessionGroupModel: new SessionGroupModel(ctx.serverDB, ctx.userId, wsId),
     },
   });
 });

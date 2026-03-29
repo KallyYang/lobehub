@@ -18,6 +18,7 @@ import { type ProviderConfig } from '@/types/user/settings';
 
 const aiModelProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+  const wsId = ctx.workspaceId ?? undefined;
 
   const gateKeeper = await KeyVaultsGateKeeper.initWithEnvKey();
   const { aiProvider } = await getServerGlobalConfig();
@@ -29,7 +30,7 @@ const aiModelProcedure = authedProcedure.use(serverDatabase).use(async (opts) =>
         ctx.userId,
         aiProvider as Record<string, ProviderConfig>,
       ),
-      aiModelModel: new AiModelModel(ctx.serverDB, ctx.userId),
+      aiModelModel: new AiModelModel(ctx.serverDB, ctx.userId, wsId),
       gateKeeper,
       userModel: new UserModel(ctx.serverDB, ctx.userId),
     },

@@ -8,16 +8,18 @@ import { idGenerator } from '../utils/idGenerator';
 export class SessionGroupModel {
   private userId: string;
   private db: LobeChatDatabase;
+  private workspaceId?: string;
 
-  constructor(db: LobeChatDatabase, userId: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
     this.userId = userId;
     this.db = db;
+    this.workspaceId = workspaceId;
   }
 
   create = async (params: { name: string; sort?: number }) => {
     const [result] = await this.db
       .insert(sessionGroups)
-      .values({ ...params, id: this.genId(), userId: this.userId })
+      .values({ ...params, id: this.genId(), userId: this.userId, workspaceId: this.workspaceId })
       .returning();
 
     return result;

@@ -24,17 +24,19 @@ const queryColumns = {
 export class ThreadModel {
   private userId: string;
   private db: LobeChatDatabase;
+  private workspaceId?: string;
 
-  constructor(db: LobeChatDatabase, userId: string) {
+  constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
     this.userId = userId;
     this.db = db;
+    this.workspaceId = workspaceId;
   }
 
   create = async (params: CreateThreadParams) => {
     // @ts-ignore
     const [result] = await this.db
       .insert(threads)
-      .values({ status: ThreadStatus.Active, ...params, userId: this.userId })
+      .values({ status: ThreadStatus.Active, ...params, userId: this.userId, workspaceId: this.workspaceId })
       .onConflictDoNothing()
       .returning();
 

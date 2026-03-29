@@ -27,12 +27,13 @@ import { basicContextSchema } from './_schema/context';
 
 const topicProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
+  const wsId = ctx.workspaceId ?? undefined;
 
   return opts.next({
     ctx: {
       agentMigrationRepo: new AgentMigrationRepo(ctx.serverDB, ctx.userId),
       topicImporterRepo: new TopicImporterRepo(ctx.serverDB, ctx.userId),
-      topicModel: new TopicModel(ctx.serverDB, ctx.userId),
+      topicModel: new TopicModel(ctx.serverDB, ctx.userId, wsId),
       topicShareModel: new TopicShareModel(ctx.serverDB, ctx.userId),
     },
   });
@@ -59,7 +60,8 @@ export const topicRouter = router({
       }
 
       // Fallback: fetch recent messages with correct agentId/groupId
-      const messageModel = new MessageModel(ctx.serverDB, ctx.userId);
+      const wsId = ctx.workspaceId ?? undefined;
+      const messageModel = new MessageModel(ctx.serverDB, ctx.userId, wsId);
       const messages = await messageModel.query({
         agentId: topic.agentId ?? undefined,
         groupId: topic.groupId ?? undefined,
