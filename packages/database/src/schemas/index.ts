@@ -24,3 +24,4 @@ export * from './task';
 export * from './topic';
 export * from './user';
 export * from './userMemories';
+export * from './workspace';
