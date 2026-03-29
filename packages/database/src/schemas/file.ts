@@ -99,6 +99,8 @@ export const documents = pgTable(
 
     slug: varchar('slug', { length: 255 }).$defaultFn(() => randomSlug(3)),
 
+    workspaceId: text('workspace_id'),
+
     // Timestamps
     ...timestamps,
   },
@@ -114,6 +116,7 @@ export const documents = pgTable(
     uniqueIndex('documents_slug_user_id_unique')
       .on(table.slug, table.userId)
       .where(isNotNull(table.slug)),
+    index('documents_workspace_id_idx').on(table.workspaceId),
   ],
 );
 
@@ -158,6 +161,8 @@ export const files = pgTable(
       onDelete: 'set null',
     }),
 
+    workspaceId: text('workspace_id'),
+
     ...timestamps,
   },
   (table) => {
@@ -171,6 +176,7 @@ export const files = pgTable(
         table.clientId,
         table.userId,
       ),
+      workspaceIdIdx: index('files_workspace_id_idx').on(table.workspaceId),
     };
   },
 );
@@ -199,11 +205,14 @@ export const knowledgeBases = pgTable(
 
     settings: jsonb('settings'),
 
+    workspaceId: text('workspace_id'),
+
     ...timestamps,
   },
   (t) => [
     uniqueIndex('knowledge_bases_client_id_user_id_unique').on(t.clientId, t.userId),
     index('knowledge_bases_user_id_idx').on(t.userId),
+    index('knowledge_bases_workspace_id_idx').on(t.workspaceId),
   ],
 );
 

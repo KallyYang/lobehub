@@ -42,6 +42,7 @@ export const topics = pgTable(
     metadata: jsonb('metadata').$type<ChatTopicMetadata | undefined>(),
     trigger: text('trigger'), // 'cron' | 'chat' | 'api' | 'eval' - topic creation trigger source
     mode: text('mode'), // 'temp' | 'test' | 'default' - topic usage scenario
+    workspaceId: text('workspace_id'),
     ...timestamps,
   },
   (t) => [
@@ -52,6 +53,7 @@ export const topics = pgTable(
     index('topics_group_id_idx').on(t.groupId),
     index('topics_agent_id_idx').on(t.agentId),
     index('topics_trigger_idx').on(t.trigger),
+    index('topics_workspace_id_idx').on(t.workspaceId),
     index('topics_extract_status_gin_idx').using(
       'gin',
       sql`(metadata->'userMemoryExtractStatus') jsonb_path_ops`,
@@ -104,6 +106,7 @@ export const threads = pgTable(
       .notNull(),
 
     lastActiveAt: timestamptz('last_active_at').defaultNow(),
+    workspaceId: text('workspace_id'),
     ...timestamps,
   },
   (t) => [
@@ -114,6 +117,7 @@ export const threads = pgTable(
     index('threads_agent_id_idx').on(t.agentId),
     index('threads_group_id_idx').on(t.groupId),
     index('threads_parent_thread_id_idx').on(t.parentThreadId),
+    index('threads_workspace_id_idx').on(t.workspaceId),
   ],
 );
 

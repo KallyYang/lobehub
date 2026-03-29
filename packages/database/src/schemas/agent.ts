@@ -50,6 +50,7 @@ export const agents = pgTable(
     userId: text('user_id')
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
+    workspaceId: text('workspace_id'),
 
     agencyConfig: jsonb('agency_config').$type<LobeAgentAgencyConfig>(),
     chatConfig: jsonb('chat_config').$type<LobeAgentChatConfig>(),
@@ -80,6 +81,7 @@ export const agents = pgTable(
     index('agents_title_idx').on(t.title),
     index('agents_description_idx').on(t.description),
     index('agents_session_group_id_idx').on(t.sessionGroupId),
+    index('agents_workspace_id_idx').on(t.workspaceId),
   ],
 );
 

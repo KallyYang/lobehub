@@ -134,6 +134,7 @@ export const messages = pgTable(
     messageGroupId: varchar255('message_group_id').references(() => messageGroups.id, {
       onDelete: 'cascade',
     }),
+    workspaceId: text('workspace_id'),
     ...timestamps,
   },
   (table) => [
@@ -149,6 +150,7 @@ export const messages = pgTable(
     index('messages_agent_id_idx').on(table.agentId),
     index('messages_group_id_idx').on(table.groupId),
     index('messages_message_group_id_idx').on(table.messageGroupId),
+    index('messages_workspace_id_idx').on(table.workspaceId),
   ],
 );
 

@@ -21,6 +21,7 @@ export const sessionGroups = pgTable(
       .notNull(),
 
     clientId: text('client_id'),
+    workspaceId: text('workspace_id'),
     ...timestamps,
   },
   (table) => ({
@@ -29,6 +30,7 @@ export const sessionGroups = pgTable(
       table.userId,
     ),
     userIdIdx: index('session_groups_user_id_idx').on(table.userId),
+    workspaceIdIdx: index('session_groups_workspace_id_idx').on(table.workspaceId),
   }),
 );
 
@@ -61,6 +63,7 @@ export const sessions = pgTable(
     groupId: text('group_id').references(() => sessionGroups.id, { onDelete: 'set null' }),
     clientId: text('client_id'),
     pinned: boolean('pinned').default(false),
+    workspaceId: text('workspace_id'),
 
     ...timestamps,
   },
@@ -72,6 +75,7 @@ export const sessions = pgTable(
     index('sessions_id_user_id_idx').on(t.id, t.userId),
     index('sessions_user_id_updated_at_idx').on(t.userId, t.updatedAt),
     index('sessions_group_id_idx').on(t.groupId),
+    index('sessions_workspace_id_idx').on(t.workspaceId),
   ],
 );
 
