@@ -5,8 +5,6 @@ import { nanoid } from '@lobechat/utils';
 import debug from 'debug';
 
 import { lambdaClient } from '@/libs/trpc/client';
-import { type StreamEvent } from '@/services/agentRuntime';
-import { agentRuntimeClient } from '@/services/agentRuntime';
 import { type ChatStore } from '@/store/chat/store';
 import { type StoreSetter } from '@/store/types';
 import { setNamespace } from '@/utils/storeDebug';
@@ -158,18 +156,10 @@ export class ChatGroupChatActionImpl {
         return;
       }
 
-      // 8. Create streaming context - use assistantMessageId from backend response
-      const streamContext = {
-        assistantId: result.assistantMessageId,
-        content: '',
-        reasoning: '',
-        tmpAssistantId: tempAssistantId, // Used for cleanup if needed
-      };
-
-      // 9. Start child operation for SSE stream using backend operationId
+      // 8. Start child operation for gateway stream using backend operationId
       this.#get().startOperation({
         context: { ...execContext, messageId: result.assistantMessageId },
-        label: 'Group Agent Stream',
+        label: 'Group Agent Gateway',
         operationId: result.operationId,
         parentOperationId: execOperationId,
         type: 'groupAgentStream',
@@ -181,39 +171,12 @@ export class ChatGroupChatActionImpl {
       this.#get().associateMessageWithOperation(result.assistantMessageId, execOperationId);
       this.#get().associateMessageWithOperation(result.assistantMessageId, result.operationId);
 
-      // 10. Connect to SSE stream
-      // Server will automatically close the connection after sending agent_runtime_end event
-      const eventSource = agentRuntimeClient.createStreamConnection(result.operationId, {
-        includeHistory: false,
-        onConnect: () => {
-          log('Stream connected to %s', result.operationId);
-        },
-        onDisconnect: () => {
-          log('Stream disconnected from %s', result.operationId);
-          // Complete both operations when stream disconnects (either by server close or client abort)
-          this.#get().completeOperation(result.operationId);
-          this.#get().completeOperation(execOperationId);
-        },
-        onError: (error: Error) => {
-          log('Stream error for %s: %O', result.operationId, error);
-          // Fail the stream operation on error
-          this.#get().failOperation(result.operationId, {
-            message: error.message,
-            type: 'AgentStreamError',
-          });
-          if (streamContext.assistantId) {
-            this.#get().internal_handleAgentError(streamContext.assistantId, error.message);
-          }
-        },
-        onEvent: async (event: StreamEvent) => {
-          await internal_handleAgentStreamEvent(result.operationId, event, streamContext);
-        },
-      });
-
-      // 11. Register cancel handler for aborting SSE stream
-      this.#get().onOperationCancel(result.operationId, () => {
-        log('Cancelling SSE stream for operation %s', result.operationId);
-        eventSource.abort();
+      // 9. Connect to Agent Gateway via WebSocket
+      const chatKey = result.operationId; // Use operationId as chatKey for gateway routing
+      const gatewayClient = this.#get().internal_connectAgentGateway(chatKey, {
+        assistantId: result.assistantMessageId,
+        execOperationId,
+        streamOperationId: result.operationId,
       });
     } catch (error) {
       // Check if this is an abort error (user cancelled the operation)

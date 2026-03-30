@@ -1,3 +1,11 @@
+import {
+  type AgentEventMessage,
+  AgentGatewayClient,
+  type InputRequestMessage,
+  type SessionCompleteMessage,
+  type StatusChangeMessage,
+  type ToolConfirmationRequestMessage,
+} from '@lobechat/agent-gateway-client';
 import { isDesktop } from '@lobechat/const';
 import { type ChatToolPayload } from '@lobechat/types';
 import debug from 'debug';
@@ -329,6 +337,186 @@ export class AgentActionImpl {
 
       default: {
         log(`Handling event ${event.type} for ${assistantId}:`, event);
+        break;
+      }
+    }
+  };
+
+  // ─── Agent Gateway (WebSocket) ───
+
+  /**
+   * Connect to Agent Gateway via WebSocket and wire up event handlers.
+   * Returns the gateway client instance (stored on the operation for cancel handling).
+   */
+  internal_connectAgentGateway = (
+    chatKey: string,
+    params: {
+      assistantId: string;
+      execOperationId: string;
+      streamOperationId: string;
+    },
+  ): AgentGatewayClient => {
+    const { assistantId, execOperationId, streamOperationId } = params;
+
+    // TODO: make gatewayUrl configurable via env/settings
+    const gatewayUrl = 'https://agent-gateway.lobehub.com';
+    // TODO: get token from auth service
+    const token = '';
+
+    const client = new AgentGatewayClient({ gatewayUrl, token });
+
+    const streamContext = { assistantId, content: '', reasoning: '' };
+
+    client.on('connected', () => {
+      log('Gateway connected for %s', chatKey);
+    });
+
+    client.on('disconnected', () => {
+      log('Gateway disconnected for %s', chatKey);
+      this.#get().completeOperation(streamOperationId);
+      this.#get().completeOperation(execOperationId);
+    });
+
+    client.on('error', (error: Error | Event) => {
+      log('Gateway error for %s: %O', chatKey, error);
+      this.#get().failOperation(streamOperationId, {
+        message: error instanceof Error ? error.message : 'Gateway connection error',
+        type: 'AgentGatewayError',
+      });
+      this.#get().internal_handleAgentError(assistantId, 'Gateway connection error');
+    });
+
+    client.on('agent_event', (message: AgentEventMessage) => {
+      this.internal_handleGatewayAgentEvent(assistantId, message, streamContext);
+    });
+
+    client.on('tool_confirmation_request', (message: ToolConfirmationRequestMessage) => {
+      log('Tool confirmation request: %s', message.toolCallId);
+      this.#get().updateOperationMetadata(streamOperationId, {
+        needsHumanInput: true,
+        pendingApproval: [{ toolCallId: message.toolCallId, tool: message.tool }],
+      });
+      this.#get().internal_toggleMessageLoading(false, assistantId);
+
+      // Store client ref so intervention handler can use it
+      this.#get().updateOperationMetadata(streamOperationId, {
+        gatewayClient: client,
+      });
+    });
+
+    client.on('input_request', (message: InputRequestMessage) => {
+      log('User input request: %s', message.requestId);
+      this.#get().updateOperationMetadata(streamOperationId, {
+        gatewayClient: client,
+        needsHumanInput: true,
+        pendingPrompt: message.prompt,
+        pendingRequestId: message.requestId,
+      });
+      this.#get().internal_toggleMessageLoading(false, assistantId);
+    });
+
+    client.on('session_complete', (message: SessionCompleteMessage) => {
+      log('Session complete for %s', chatKey);
+      this.#get().internal_toggleMessageLoading(false, assistantId);
+      this.#get().completeOperation(streamOperationId);
+      this.#get().completeOperation(execOperationId);
+
+      // Mark unread completion for background conversations
+      const op = this.#get().operations[streamOperationId];
+      if (op?.context.agentId) {
+        this.#get().markUnreadCompleted(op.context.agentId, op.context.topicId);
+      }
+
+      // Disconnect after completion
+      client.disconnect();
+    });
+
+    client.on('status_update', (message: StatusChangeMessage) => {
+      log('Status change for %s: %s', chatKey, message.status);
+      if (message.status === 'error' || message.status === 'interrupted') {
+        this.#get().internal_toggleMessageLoading(false, assistantId);
+      }
+    });
+
+    // Register cancel handler
+    this.#get().onOperationCancel(streamOperationId, () => {
+      log('Cancelling gateway connection for %s', chatKey);
+      client.sendInterrupt();
+      client.disconnect();
+    });
+
+    // Connect
+    client.connect(chatKey);
+
+    return client;
+  };
+
+  /**
+   * Handle agent_event messages from the gateway.
+   * Maps gateway AgentStreamEvent kinds to store updates.
+   */
+  private internal_handleGatewayAgentEvent = (
+    assistantId: string,
+    message: AgentEventMessage,
+    context: { assistantId: string; content: string; reasoning: string },
+  ): void => {
+    const { internal_dispatchMessage } = this.#get();
+    const event = message.event;
+
+    switch (event.kind) {
+      case 'text_delta': {
+        context.content += event.content;
+        internal_dispatchMessage({
+          id: assistantId,
+          type: 'updateMessage',
+          value: { content: context.content },
+        });
+        break;
+      }
+
+      case 'thinking': {
+        context.reasoning += event.content;
+        internal_dispatchMessage({
+          id: assistantId,
+          type: 'updateMessage',
+          value: { reasoning: { content: context.reasoning } },
+        });
+        break;
+      }
+
+      case 'tool_call_start': {
+        // Tool call started - could update tools display
+        log('Tool call start: %s (%s)', event.name, event.toolCallId);
+        break;
+      }
+
+      case 'tool_call_delta': {
+        // Tool call arguments streaming
+        break;
+      }
+
+      case 'tool_call_end': {
+        log('Tool call end: %s', event.toolCallId);
+        break;
+      }
+
+      case 'tool_result': {
+        log('Tool result for %s', event.toolCallId);
+        // Refresh messages to display tool results from server
+        this.#get().refreshMessages();
+        break;
+      }
+
+      case 'step_complete': {
+        log('Step %d complete', event.stepIndex);
+        break;
+      }
+
+      case 'message_complete': {
+        log('Message complete: %s', event.messageId);
+        this.#get().internal_toggleMessageLoading(false, assistantId);
+        // Refresh to get final persisted state from server
+        this.#get().refreshMessages();
         break;
       }
     }
