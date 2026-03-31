@@ -49,17 +49,6 @@ export const LOBEHUB_SKILL_PROVIDERS: LobehubSkillProviderType[] = [
     author: 'LobeHub',
     authorUrl: 'https://lobehub.com',
     defaultVisible: true,
-    description: 'Gmail is a free email service provided by Google',
-    icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/gmail.svg',
-    id: 'gmail',
-    label: 'Gmail',
-    readme:
-      'Bring the power of Gmail directly into your AI assistant. Read, compose, and send emails, search your inbox, manage labels, and organize your communications—all through natural conversation.',
-  },
-  {
-    author: 'LobeHub',
-    authorUrl: 'https://lobehub.com',
-    defaultVisible: true,
     description:
       'GitHub is a platform for version control and collaboration, enabling developers to host, review, and manage code repositories.',
     icon: SiGithub,

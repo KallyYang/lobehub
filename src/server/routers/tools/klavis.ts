@@ -5,20 +5,6 @@ import { authedProcedure, publicProcedure, router } from '@/libs/trpc/lambda';
 import { MCPService } from '@/server/services/mcp';
 
 /**
- * Filter tools for specific Klavis servers (POC)
- * Gmail: only allow send_email
- */
-const KLAVIS_ALLOWED_TOOLS: Record<string, string[]> = {
-  Gmail: ['gmail_send_email'],
-};
-
-const filterKlavisTools = <T extends { name: string }>(serverName: string, tools: T[]): T[] => {
-  const allowedTools = KLAVIS_ALLOWED_TOOLS[serverName];
-  if (!allowedTools) return tools;
-  return tools.filter((t) => allowedTools.includes(t.name));
-};
-
-/**
  * Klavis procedure with client initialized in context
  */
 const klavisProcedure = authedProcedure.use(async (opts) => {
@@ -87,7 +73,7 @@ export const klavisRouter = router({
       const response = await klavisClient.mcpServer.getTools(input.serverName as any);
 
       return {
-        tools: filterKlavisTools(input.serverName, (response.tools || []) as { name: string }[]),
+        tools: (response.tools || []) as { name: string }[],
       };
     }),
 

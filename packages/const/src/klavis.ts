@@ -27,17 +27,17 @@ export interface KlavisServerType {
 }
 
 export const KLAVIS_SERVER_TYPES: KlavisServerType[] = [
-  // {
-  //   author: 'Klavis',
-  //   authorUrl: 'https://klavis.io',
-  //   description: 'Gmail is a free email service provided by Google',
-  //   icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/gmail.svg',
-  //   identifier: 'gmail',
-  //   readme:
-  //     'Bring the power of Gmail directly into your AI assistant. Read, compose, and send emails, search your inbox, manage labels, and organize your communications—all through natural conversation.',
-  //   label: 'Gmail',
-  //   serverName: Klavis.McpServerName.Gmail,
-  // },
+  {
+    author: 'Klavis',
+    authorUrl: 'https://klavis.io',
+    description: 'Gmail is a free email service provided by Google',
+    icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/gmail.svg',
+    identifier: 'gmail',
+    label: 'Gmail',
+    readme:
+      'Bring the power of Gmail directly into your AI assistant. Read, compose, and send emails, search your inbox, manage labels, and organize your communications—all through natural conversation.',
+    serverName: Klavis.McpServerName.Gmail,
+  },
   {
     author: 'Klavis',
     authorUrl: 'https://klavis.io',
@@ -118,17 +118,17 @@ export const KLAVIS_SERVER_TYPES: KlavisServerType[] = [
     label: 'Supabase',
     serverName: Klavis.McpServerName.Supabase,
   },
-  // {
-  //   author: 'Klavis',
-  //   authorUrl: 'https://klavis.io',
-  //   description: 'Google Drive is a cloud storage service',
-  //   icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/googledrive.svg',
-  //   identifier: 'google-drive',
-  //   readme:
-  //     'Connect to Google Drive to access, organize, and manage your files. Search documents, upload files, share content, and navigate your cloud storage efficiently through AI assistance.',
-  //   label: 'Google Drive',
-  //   serverName: Klavis.McpServerName.GoogleDrive,
-  // },
+  {
+    author: 'Klavis',
+    authorUrl: 'https://klavis.io',
+    description: 'Google Drive is a cloud storage service',
+    icon: 'https://hub-apac-1.lobeobjects.space/assets/logos/googledrive.svg',
+    identifier: 'google-drive',
+    label: 'Google Drive',
+    readme:
+      'Connect to Google Drive to access, organize, and manage your files. Search documents, upload files, share content, and navigate your cloud storage efficiently through AI assistance.',
+    serverName: Klavis.McpServerName.GoogleDrive,
+  },
   {
     author: 'Klavis',
     authorUrl: 'https://klavis.io',
