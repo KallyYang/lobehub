@@ -8,7 +8,7 @@ import { generateTrustedClientToken, getTrustedClientTokenForSession } from '@/l
 
 const log = debug('lobe-server:market-service');
 
-const MARKET_BASE_URL = process.env.NEXT_PUBLIC_MARKET_BASE_URL || 'https://market.lobehub.com';
+const MARKET_BASE_URL = process.env.MARKET_BASE_URL || 'https://market.lobehub.com';
 
 // ============================== Helper Functions ==============================
 
@@ -385,7 +385,74 @@ export class MarketService {
     await this.market.user.register(params);
   }
 
-  // ============================== Skills Methods ==============================
+  // ============================== Skills Methods (using SDK) ==============================
+
+  /**
+   * Search for skills in the LobeHub Market
+   */
+  async searchSkill(params: {
+    category?: string;
+    locale?: string;
+    order?: 'asc' | 'desc';
+    page?: number;
+    pageSize?: number;
+    q?: string;
+    sort?:
+      | 'createdAt'
+      | 'forks'
+      | 'installCount'
+      | 'name'
+      | 'relevance'
+      | 'stars'
+      | 'updatedAt'
+      | 'watchers';
+  }) {
+    log('searchSkill: %O', params);
+
+    const result = await this.market.marketSkills.getSkillList(params);
+
+    log('searchSkill response: %O', result);
+
+    return result;
+  }
+
+  /**
+   * Get skill detail from market
+   */
+  async getSkillDetail(identifier: string, options?: { locale?: string; version?: string }) {
+    log('getSkillDetail: %s, options: %O', identifier, options);
+
+    const result = await this.market.marketSkills.getSkillDetail(identifier, options);
+
+    log('getSkillDetail response: %O', result);
+
+    return result;
+  }
+
+  /**
+   * Get skill download URL from market
+   */
+  getSkillDownloadUrl(identifier: string, version?: string): string {
+    return this.market.marketSkills.getDownloadUrl(identifier, version);
+  }
+
+  /**
+   * Download skill ZIP directly
+   */
+  async downloadSkill(identifier: string, version?: string) {
+    log('downloadSkill: %s, version: %s', identifier, version);
+
+    return this.market.marketSkills.downloadSkill(identifier, version);
+  }
+
+  /**
+   * Get skill categories
+   */
+  async getSkillCategories() {
+    log('getSkillCategories');
+
+    return this.market.marketSkills.getCategories();
+  }
 
   /**
    * Execute a LobeHub Skill tool
@@ -488,6 +555,68 @@ export class MarketService {
       log('getLobehubSkillManifests: error fetching skills: %O', error);
       return [];
     }
+  }
+
+  // ============================== Creds Methods ==============================
+
+  /**
+   * Upload credential file to Market API
+   * This method directly calls the Market API since SDK doesn't support file upload yet
+   *
+   * @param file - File content as base64 string
+   * @param fileName - Original file name
+   * @param fileType - MIME type of the file
+   * @returns Upload result with fileHashId
+   */
+  async uploadCredFile(params: {
+    file: string; // base64 encoded file content
+    fileName: string;
+    fileType: string;
+  }): Promise<{ fileHashId: string; fileName: string; fileSize: number; fileType: string }> {
+    const { file, fileName, fileType } = params;
+
+    log('uploadCredFile: fileName=%s, fileType=%s', fileName, fileType);
+
+    // Convert base64 to Blob
+    const binaryString = atob(file);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    const blob = new Blob([bytes], { type: fileType });
+
+    // Create FormData
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+
+    // Extract only auth headers (not Content-Type, which would break multipart/form-data)
+    // @ts-ignore - market.headers contains auth headers
+    const sdkHeaders = this.market.headers as Record<string, string>;
+    const authHeaders: Record<string, string> = {};
+    for (const [key, value] of Object.entries(sdkHeaders)) {
+      // Only include authorization-related headers, skip Content-Type
+      if (key.toLowerCase() !== 'content-type') {
+        authHeaders[key] = value;
+      }
+    }
+
+    // Call Market API directly
+    const uploadUrl = `${MARKET_BASE_URL}/api/v1/user/creds/upload`;
+    const response = await fetch(uploadUrl, {
+      body: formData,
+      headers: authHeaders,
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      log('uploadCredFile error: %O', errorData);
+      throw new Error(errorData.message || `Upload failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
+    log('uploadCredFile success: fileHashId=%s', result.fileHashId);
+    return result;
   }
 
   // ============================== Direct SDK Access ==============================

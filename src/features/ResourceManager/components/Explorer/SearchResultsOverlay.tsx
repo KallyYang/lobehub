@@ -8,9 +8,9 @@ import { memo, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Virtuoso } from 'react-virtuoso';
 
-import { useResourceManagerStore } from '@/app/[variants]/(main)/resource/features/store';
 import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
 import { useClientDataSWR } from '@/libs/swr';
+import { useResourceManagerStore } from '@/routes/(main)/resource/features/store';
 import { resourceService } from '@/services/resource';
 import { useGlobalStore } from '@/store/global';
 import { INITIAL_STATUS } from '@/store/global/initialState';
@@ -77,8 +77,15 @@ const SearchResultsOverlay = memo(() => {
   const masonryContext = useMemo(
     () => ({
       knowledgeBaseId: libraryId ?? undefined,
+      onSelectedChange: (id: string, checked: boolean) => {
+        if (checked) {
+          setSelectedFileIds((prev) => [...prev, id]);
+        } else {
+          setSelectedFileIds((prev) => prev.filter((fid) => fid !== id));
+        }
+      },
+      selectAllState: 'loaded' as const,
       selectFileIds: selectedFileIds,
-      setSelectedFileIds,
     }),
     [libraryId, selectedFileIds],
   );
@@ -116,8 +123,8 @@ const SearchResultsOverlay = memo(() => {
         <Flexbox height={'100%'}>
           <div style={{ flex: 1, overflow: 'auto hidden' }}>
             <Flexbox
-              align="center"
               horizontal
+              align="center"
               paddingInline={8}
               style={{
                 borderBlockEnd: `1px solid ${cssVar.colorBorderSecondary}`,
@@ -129,7 +136,7 @@ const SearchResultsOverlay = memo(() => {
               }}
             >
               <Center height={40} style={{ paddingInline: 4 }}>
-                <Checkbox checked={false} disabled />
+                <Checkbox disabled checked={false} />
               </Center>
               <Flexbox
                 justify="center"
@@ -174,16 +181,15 @@ const SearchResultsOverlay = memo(() => {
               <Virtuoso
                 data={data}
                 defaultItemHeight={48}
+                style={{ height: '100%' }}
                 itemContent={(index, item) => {
                   if (!item) return null;
                   return (
                     <FileListItemComponent
                       columnWidths={columnWidths}
                       index={index}
-                      isAnyRowHovered={false}
                       key={item.id}
                       selected={selectedFileIds.includes(item.id)}
-                      onHoverChange={() => {}}
                       onSelectedChange={(id, checked) => {
                         if (checked) {
                           setSelectedFileIds((prev) => [...prev, id]);
@@ -195,7 +201,6 @@ const SearchResultsOverlay = memo(() => {
                     />
                   );
                 }}
-                style={{ height: '100%' }}
               />
             </div>
           </div>

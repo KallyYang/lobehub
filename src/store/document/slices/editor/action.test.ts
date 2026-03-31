@@ -1,6 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+import { EMPTY_EDITOR_STATE } from '@/libs/editor/constants';
+
 import { useDocumentStore } from '../../store';
 
 // Mock services
@@ -180,9 +182,22 @@ describe('DocumentStore - Editor Actions', () => {
       expect(mockEditor.setDocument).toHaveBeenCalledWith('json', JSON.stringify(editorData));
     });
 
-    it('should not call setDocument when content is empty to avoid editor error', () => {
+    it('should reset editor content when target document is empty', () => {
       const { result } = renderHook(() => useDocumentStore());
       const mockEditor = createMockEditor() as any;
+
+      act(() => {
+        result.current.initDocumentWithEditor({
+          content: '# Previous Content',
+          documentId: 'doc-previous',
+          editor: mockEditor,
+          sourceType: 'page',
+        });
+      });
+
+      act(() => {
+        result.current.onEditorInit(mockEditor);
+      });
 
       act(() => {
         result.current.initDocumentWithEditor({
@@ -196,9 +211,10 @@ describe('DocumentStore - Editor Actions', () => {
         result.current.onEditorInit(mockEditor);
       });
 
-      // setDocument should NOT be called for empty content
-      // This prevents "setEditorState: the editor state is empty" error
-      expect(mockEditor.setDocument).not.toHaveBeenCalled();
+      expect(mockEditor.setDocument).toHaveBeenLastCalledWith(
+        'json',
+        JSON.stringify(EMPTY_EDITOR_STATE),
+      );
     });
   });
 
@@ -275,6 +291,42 @@ describe('DocumentStore - Editor Actions', () => {
       });
 
       expect(result.current.documents['doc-1'].isDirty).toBe(true);
+    });
+  });
+
+  describe('handleContentChange', () => {
+    it('should mark document dirty when editorData changes even if markdown is unchanged', () => {
+      const { result } = renderHook(() => useDocumentStore());
+      const mockEditor = {
+        getDocument: vi.fn((type: string) => {
+          if (type === 'markdown') return '# Test';
+          if (type === 'json') return { type: 'doc', version: 2 };
+          return null;
+        }),
+        setDocument: vi.fn(),
+      } as any;
+
+      act(() => {
+        result.current.initDocumentWithEditor({
+          content: '# Test',
+          documentId: 'doc-1',
+          editor: mockEditor,
+          editorData: { type: 'doc', version: 1 },
+          sourceType: 'page',
+        });
+      });
+
+      expect(result.current.documents['doc-1'].isDirty).toBe(false);
+
+      act(() => {
+        result.current.handleContentChange();
+      });
+
+      expect(result.current.documents['doc-1']).toMatchObject({
+        content: '# Test',
+        editorData: { type: 'doc', version: 2 },
+        isDirty: true,
+      });
     });
   });
 

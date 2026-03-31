@@ -61,7 +61,7 @@ export const RenderDisplayControlSchema = z.enum(['collapsed', 'expand', 'always
 export type DynamicInterventionResolver = (
   toolArgs: Record<string, any>,
   metadata?: Record<string, any>,
-) => boolean;
+) => Promise<boolean>;
 
 /**
  * Global intervention audit configuration
@@ -212,6 +212,7 @@ export const BuiltinToolManifestSchema = z.object({
 });
 
 export interface LobeBuiltinTool {
+  discoverable?: boolean;
   hidden?: boolean;
   identifier: string;
   manifest: BuiltinToolManifest;
@@ -219,6 +220,7 @@ export interface LobeBuiltinTool {
 }
 
 export const LobeBuiltinToolSchema = z.object({
+  discoverable: z.boolean().optional(),
   hidden: z.boolean().optional(),
   identifier: z.string(),
   manifest: BuiltinToolManifestSchema,
@@ -308,6 +310,7 @@ export interface BuiltinInterventionProps<Arguments = any> {
   apiName?: string;
   args: Arguments;
   identifier?: string;
+  interactionMode?: 'approval' | 'custom';
   messageId: string;
   /**
    * Callback to update the arguments before approval
@@ -315,6 +318,12 @@ export interface BuiltinInterventionProps<Arguments = any> {
    * The approve action will wait for this async callback to complete
    */
   onArgsChange?: (args: Arguments) => void | Promise<void>;
+  onInteractionAction?: (
+    action:
+      | { type: 'submit'; payload: Record<string, unknown> }
+      | { type: 'skip'; reason?: string }
+      | { type: 'cancel' },
+  ) => Promise<void>;
   /**
    * Register a callback to be called before approval
    * Used by intervention components that need to flush pending saves (e.g., debounced saves)

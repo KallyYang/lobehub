@@ -15,6 +15,9 @@ import { getAgentStoreState } from '@/store/agent';
 import { agentSelectors, chatConfigByIdSelectors } from '@/store/agent/selectors';
 import { getChatGroupStoreState } from '@/store/agentGroup';
 import { agentGroupByIdSelectors, agentGroupSelectors } from '@/store/agentGroup/selectors';
+import { useUserStore } from '@/store/user';
+import { userGeneralSettingsSelectors } from '@/store/user/selectors';
+import { isDev } from '@/utils/env';
 
 const log = debug('mecha:agentConfigResolver');
 
@@ -44,7 +47,7 @@ const applyParamsFromChatConfig = (
   chatConfig: LobeAgentChatConfig,
 ): LobeAgentConfig => {
   // If params is not defined, return agentConfig as-is
-  if (!agentConfig.params) {
+  if (!agentConfig?.params) {
     return agentConfig;
   }
 
@@ -168,7 +171,7 @@ export const resolveAgentConfig = (ctx: AgentConfigResolverContext): ResolvedAge
   const chatConfig = chatConfigByIdSelectors.getChatConfigById(agentId)(agentStoreState);
 
   // Base plugins from agent config
-  const basePlugins = agentConfig.plugins ?? [];
+  const basePlugins = agentConfig?.plugins ?? [];
 
   // Check if this is a builtin agent
   // Priority: supervisor check (when in group scope) > agent store slug
@@ -331,9 +334,11 @@ export const resolveAgentConfig = (ctx: AgentConfigResolverContext): ResolvedAge
   const runtimeConfig = getAgentRuntimeConfig(slug, {
     documentContent,
     groupSupervisorContext,
+    isDev,
     model,
     plugins: plugins || basePlugins,
     targetAgentConfig,
+    userLocale: userGeneralSettingsSelectors.currentResponseLanguage(useUserStore.getState()),
   });
 
   // Merge runtime systemRole into agent config

@@ -7,9 +7,23 @@
  * - Per-request runtimes (e.g., CloudSandbox - needs topicId, userId)
  */
 import { type ToolExecutionContext } from '../types';
+import { activatorRuntime } from './activator';
+import { agentDocumentsRuntime } from './agentDocuments';
+import { briefRuntime } from './brief';
+import { calculatorRuntime } from './calculator';
 import { cloudSandboxRuntime } from './cloudSandbox';
+import { credsRuntime } from './creds';
+import { localSystemRuntime } from './localSystem';
+import { memoryRuntime } from './memory';
+import { messageRuntime } from './message';
 import { notebookRuntime } from './notebook';
+import { remoteDeviceRuntime } from './remoteDevice';
+import { skillsRuntime } from './skills';
+import { skillStoreRuntime } from './skillStore';
+import { taskRuntime } from './task';
+import { topicReferenceRuntime } from './topicReference';
 import { type ServerRuntimeFactory, type ServerRuntimeRegistration } from './types';
+import { userInteractionRuntime } from './userInteraction';
 import { webBrowsingRuntime } from './webBrowsing';
 
 /**
@@ -27,7 +41,25 @@ const registerRuntimes = (runtimes: ServerRuntimeRegistration[]) => {
 };
 
 // Register all server runtimes
-registerRuntimes([webBrowsingRuntime, cloudSandboxRuntime, notebookRuntime]);
+registerRuntimes([
+  webBrowsingRuntime,
+  cloudSandboxRuntime,
+  calculatorRuntime,
+  agentDocumentsRuntime,
+  notebookRuntime,
+  skillStoreRuntime,
+  skillsRuntime,
+  memoryRuntime,
+  activatorRuntime,
+  messageRuntime,
+  localSystemRuntime,
+  remoteDeviceRuntime,
+  briefRuntime,
+  taskRuntime,
+  topicReferenceRuntime,
+  userInteractionRuntime,
+  credsRuntime,
+]);
 
 // ==================== Registry API ====================
 
@@ -35,8 +67,12 @@ registerRuntimes([webBrowsingRuntime, cloudSandboxRuntime, notebookRuntime]);
  * Get a server runtime by identifier
  * @param identifier - The tool identifier
  * @param context - Execution context (required for per-request runtimes)
+ * @returns Runtime instance (may be a Promise for async factories)
  */
-export const getServerRuntime = (identifier: string, context: ToolExecutionContext): any => {
+export const getServerRuntime = (
+  identifier: string,
+  context: ToolExecutionContext,
+): any | Promise<any> => {
   const factory = serverRuntimeFactories.get(identifier);
   return factory?.(context);
 };

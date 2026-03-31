@@ -1,18 +1,18 @@
+import { getBuiltinRender } from '@lobechat/builtin-tools/renders';
+import { getBuiltinStreaming } from '@lobechat/builtin-tools/streamings';
 import { LOADING_FLAT } from '@lobechat/const';
 import { type ChatToolResult, type ToolIntervention } from '@lobechat/types';
 import { AccordionItem, Flexbox, Skeleton } from '@lobehub/ui';
 import { Divider } from 'antd';
 import { memo, useEffect, useState } from 'react';
 
+import SafeBoundary from '@/components/ErrorBoundary';
 import dynamic from '@/libs/next/dynamic';
 import { useChatStore } from '@/store/chat';
 import { operationSelectors } from '@/store/chat/slices/operation/selectors';
 import { useToolStore } from '@/store/tool';
 import { toolSelectors } from '@/store/tool/selectors';
-import { getBuiltinRender } from '@/tools/renders';
-import { getBuiltinStreaming } from '@/tools/streamings';
 
-import { ToolErrorBoundary } from '../../Tool/ErrorBoundary';
 import Actions from './Actions';
 import Inspectors from './Inspector';
 
@@ -83,8 +83,11 @@ const Tool = memo<GroupToolProps>(
     );
 
     // Fallback: arguments completed but no final result yet
+    const hasError = !!result?.error;
     const isToolCallingFallback =
-      !isArgumentsStreaming && (!result || result.content === LOADING_FLAT || !result.content);
+      !hasError &&
+      !isArgumentsStreaming &&
+      (!result || result.content === LOADING_FLAT || !result.content);
     const isToolCalling = isToolCallingFromOperation || isToolCallingFallback;
 
     const hasCustomRender = !!getBuiltinRender(identifier, apiName);
@@ -96,6 +99,10 @@ const Tool = memo<GroupToolProps>(
       // Block collapse action when alwaysExpand is set
       if (isAlwaysExpand && expand === false) {
         return;
+      }
+      // When collapsing, also turn off debug mode so the accordion can actually collapse
+      if (expand === false) {
+        setShowDebug(false);
       }
       setShowToolRender(!!expand);
     };
@@ -111,6 +118,7 @@ const Tool = memo<GroupToolProps>(
     return (
       <AccordionItem
         expand={isToolDetailExpand}
+        hideIndicator={isAlwaysExpand}
         itemKey={id}
         paddingBlock={4}
         paddingInline={4}
@@ -151,7 +159,7 @@ const Tool = memo<GroupToolProps>(
               type={type}
             />
           )}
-          <ToolErrorBoundary apiName={apiName} identifier={identifier}>
+          <SafeBoundary alertTitle={`${identifier} / ${apiName}`} variant="alert">
             <Detail
               apiName={apiName}
               arguments={requestArgs}
@@ -167,7 +175,7 @@ const Tool = memo<GroupToolProps>(
               toolMessageId={toolMessageId}
               type={type}
             />
-          </ToolErrorBoundary>
+          </SafeBoundary>
           <Divider dashed style={{ marginBottom: 0, marginTop: 8 }} />
         </Flexbox>
       </AccordionItem>

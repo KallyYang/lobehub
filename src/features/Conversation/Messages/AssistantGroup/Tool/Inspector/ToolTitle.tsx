@@ -1,3 +1,4 @@
+import { builtinToolIdentifiers } from '@lobechat/builtin-tools/identifiers';
 import { Icon } from '@lobehub/ui';
 import { createStaticStyles, cx } from 'antd-style';
 import isEqual from 'fast-deep-equal';
@@ -8,7 +9,6 @@ import { useTranslation } from 'react-i18next';
 import { pluginHelpers, useToolStore } from '@/store/tool';
 import { toolSelectors } from '@/store/tool/selectors';
 import { shinyTextStyles } from '@/styles';
-import { builtinToolIdentifiers } from '@/tools/identifiers';
 
 export const styles = createStaticStyles(({ css, cssVar }) => ({
   aborted: css`
@@ -79,7 +79,7 @@ const ToolTitle = memo<ToolTitleProps>(
 
     const pluginMeta = useToolStore(toolSelectors.getMetaById(identifier), isEqual);
     const isBuiltinPlugin = builtinToolIdentifiers.includes(identifier);
-    const pluginTitle = pluginHelpers.getPluginTitle(pluginMeta) ?? t('unknownPlugin');
+    const pluginTitle = pluginHelpers.getPluginTitle(pluginMeta) ?? identifier;
 
     const params = useMemo(() => {
       const argsToUse = args || partialArgs || {};
@@ -121,7 +121,7 @@ const ToolTitle = memo<ToolTitleProps>(
             <span className={styles.paramKey}>{' ('}</span>
             {params.map(([key, value], index) => (
               <span key={key}>
-                <span className={styles.paramKey}>{key}: </span>
+                <span className={styles.paramKey}>{key}:</span>
                 <span className={styles.paramValue}>{formatParamValue(value)}</span>
                 {index < params.length - 1 && <span className={styles.paramKey}>, </span>}
               </span>

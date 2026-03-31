@@ -154,7 +154,7 @@ export default class Browser {
   private setupWindow(browserWindow: BrowserWindow): void {
     logger.debug(`[${this.identifier}] BrowserWindow instance created.`);
 
-    // Setup theme management (includes liquid glass lifecycle on macOS Tahoe)
+    // Setup theme management
     this.themeManager.attach(browserWindow);
 
     // Setup network interceptors
@@ -167,7 +167,7 @@ export default class Browser {
     // Setup devtools if enabled
     if (this.options.devTools) {
       logger.debug(`[${this.identifier}] Opening DevTools.`);
-      browserWindow.webContents.openDevTools();
+      browserWindow.webContents.openDevTools({ mode: 'detach' });
     }
 
     // Setup event listeners
@@ -491,7 +491,7 @@ export default class Browser {
 
   /**
    * Setup CORS bypass for ALL requests
-   * In production, the renderer uses app://next protocol which triggers CORS
+   * In production, the renderer uses app://renderer protocol which triggers CORS
    */
   private setupCORSBypass(browserWindow: BrowserWindow): void {
     logger.debug(`[${this.identifier}] Setting up CORS bypass for all requests`);

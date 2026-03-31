@@ -1,4 +1,5 @@
 import { type ChatContextContent } from '@lobechat/types';
+import { COMPRESSIBLE_IMAGE_TYPES, compressImageFile } from '@lobechat/utils/compressImage';
 import { t } from 'i18next';
 
 import { notification } from '@/components/AntdStaticMethods';
@@ -77,10 +78,10 @@ export class FileActionImpl {
     let isFinished = false;
 
     while (!isFinished) {
-      // 每间隔 2s 查询一次任务状态
+      // Poll task status every 2 seconds
       await sleep(2000);
 
-      let fileItem: FileListItem | undefined = undefined;
+      let fileItem: FileListItem | undefined;
 
       try {
         const result = await fileService.getKnowledgeItem(id);
@@ -108,8 +109,14 @@ export class FileActionImpl {
   uploadChatFiles = async (rawFiles: File[]): Promise<void> => {
     const { dispatchChatUploadFileList } = this.#get();
     // 0. skip file in blacklist
-    const files = rawFiles.filter((file) => !FILE_UPLOAD_BLACKLIST.includes(file.name));
-    // 1. add files with base64
+    const filteredFiles = rawFiles.filter((file) => !FILE_UPLOAD_BLACKLIST.includes(file.name));
+    // 1. compress images and add files with base64
+    const files = await Promise.all(
+      filteredFiles.map((file) =>
+        COMPRESSIBLE_IMAGE_TYPES.has(file.type) ? compressImageFile(file) : file,
+      ),
+    );
+
     const uploadFiles: UploadFileItem[] = await Promise.all(
       files.map(async (file) => {
         let previewUrl: string | undefined = undefined;
@@ -163,8 +170,7 @@ export class FileActionImpl {
       // image don't need to be chunked and embedding
       if (isChunkingUnsupported(file.type)) return;
 
-      const data = await ragService.parseFileContent(fileResult.id);
-      console.log('parseFileContent data:', data);
+      await ragService.parseFileContent(fileResult.id);
     });
 
     await Promise.all(pools);

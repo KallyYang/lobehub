@@ -51,6 +51,7 @@ describe('TopicModel - Create', () => {
         favorite: true,
         sessionId,
         userId,
+        description: null,
         historySummary: null,
         metadata: null,
         groupId: null,
@@ -101,6 +102,7 @@ describe('TopicModel - Create', () => {
         clientId: null,
         agentId: null,
         content: null,
+        description: null,
         editorData: null,
         groupId: null,
         historySummary: null,
@@ -409,6 +411,23 @@ describe('TopicModel - Create', () => {
       await expect(topicModel.duplicate(topicId)).rejects.toThrow(
         `Topic with id ${topicId} not found`,
       );
+    });
+
+    it('should duplicate a topic with no messages (empty messageIds)', async () => {
+      const topicId = 'topic-no-messages';
+
+      await serverDB
+        .insert(topics)
+        .values({ id: topicId, sessionId, userId, title: 'Empty Topic' });
+
+      const { topic: duplicated, messages: duplicatedMessages } = await topicModel.duplicate(
+        topicId,
+        'Duplicated Empty',
+      );
+
+      expect(duplicated.id).not.toBe(topicId);
+      expect(duplicated.title).toBe('Duplicated Empty');
+      expect(duplicatedMessages).toHaveLength(0);
     });
   });
 });

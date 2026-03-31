@@ -23,12 +23,16 @@ export const usePanelHandlers = ({
         return;
       }
 
-      const params = { model: modelId, provider: providerId };
-      if (onModelChangeProp) {
-        onModelChangeProp(params);
-      } else {
-        updateAgentConfig(params);
-      }
+      // Defer store update so the panel close animation completes
+      // before React re-renders with new data (prevents detail panel flash).
+      setTimeout(() => {
+        const params = { model: modelId, provider: providerId };
+        if (onModelChangeProp) {
+          onModelChangeProp(params);
+        } else {
+          updateAgentConfig(params);
+        }
+      }, 150);
     },
     [onModelChangeProp, updateAgentConfig, checkModelSwitch],
   );

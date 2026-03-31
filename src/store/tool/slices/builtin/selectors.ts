@@ -1,8 +1,12 @@
-import { type LobeToolMeta } from '@lobechat/types';
+import { type BuiltinSkill, type LobeToolMeta } from '@lobechat/types';
 
-import { shouldEnableTool } from '@/helpers/toolFilters';
+import {
+  isBuiltinSkillAvailableInCurrentEnv,
+  isBuiltinToolAvailableInCurrentEnv,
+} from '@/helpers/toolAvailability';
 
 import { type ToolStoreState } from '../../initialState';
+import { agentSkillsSelectors } from '../agentSkills/selectors';
 import { KlavisServerStatus } from '../klavisStore';
 
 export interface LobeToolMetaWithAvailability extends LobeToolMeta {
@@ -24,7 +28,23 @@ const toBuiltinMetaWithAvailability = (
   t: ToolStoreState['builtinTools'][number],
 ): LobeToolMetaWithAvailability => ({
   ...toBuiltinMeta(t),
-  availableInWeb: shouldEnableTool(t.identifier),
+  availableInWeb: isBuiltinToolAvailableInCurrentEnv(t.identifier),
+});
+
+const toSkillMeta = (s: BuiltinSkill): LobeToolMeta => ({
+  author: 'LobeHub',
+  identifier: s.identifier,
+  meta: {
+    avatar: s.avatar,
+    description: s.description,
+    title: s.name,
+  },
+  type: 'builtin' as const,
+});
+
+const toSkillMetaWithAvailability = (s: BuiltinSkill): LobeToolMetaWithAvailability => ({
+  ...toSkillMeta(s),
+  availableInWeb: isBuiltinSkillAvailableInCurrentEnv(s.identifier),
 });
 
 const getKlavisMetas = (s: ToolStoreState): LobeToolMeta[] =>
@@ -61,7 +81,7 @@ const metaList = (s: ToolStoreState): LobeToolMeta[] => {
       if (item.hidden) return false;
 
       // Filter platform-specific tools (e.g., LocalSystem desktop-only)
-      if (!shouldEnableTool(item.identifier)) return false;
+      if (!isBuiltinToolAvailableInCurrentEnv(item.identifier)) return false;
 
       // Exclude uninstalled tools
       if (uninstalledBuiltinTools.includes(item.identifier)) {
@@ -72,7 +92,17 @@ const metaList = (s: ToolStoreState): LobeToolMeta[] => {
     })
     .map(toBuiltinMeta);
 
-  return [...builtinMetas, ...getKlavisMetas(s)];
+  const skillMetas = (s.builtinSkills || [])
+    .filter((skill) => {
+      if (!isBuiltinSkillAvailableInCurrentEnv(skill.identifier)) return false;
+      if (uninstalledBuiltinTools.includes(skill.identifier)) return false;
+
+      return true;
+    })
+    .map(toSkillMeta);
+  const agentSkillMetas = agentSkillsSelectors.agentSkillMetaList(s);
+
+  return [...skillMetas, ...agentSkillMetas, ...builtinMetas, ...getKlavisMetas(s)];
 };
 
 // Tools that should never be exposed in agent profile configuration
@@ -80,6 +110,7 @@ const EXCLUDED_TOOLS = new Set([
   'lobe-agent-builder',
   'lobe-group-agent-builder',
   'lobe-group-management',
+  'lobe-skills',
 ]);
 
 /**
@@ -97,7 +128,12 @@ const allMetaList = (s: ToolStoreState): LobeToolMetaWithAvailability[] => {
     })
     .map(toBuiltinMetaWithAvailability);
 
-  return [...builtinMetas, ...getKlavisMetasWithAvailability(s)];
+  const skillMetas = (s.builtinSkills || []).map(toSkillMetaWithAvailability);
+  const agentSkillMetas = agentSkillsSelectors
+    .agentSkillMetaList(s)
+    .map((meta) => ({ ...meta, availableInWeb: true }));
+
+  return [...skillMetas, ...agentSkillMetas, ...builtinMetas, ...getKlavisMetasWithAvailability(s)];
 };
 
 /**
@@ -120,6 +156,17 @@ const installedAllMetaList = (s: ToolStoreState): LobeToolMetaWithAvailability[]
 };
 
 /**
+ * Get installed builtin skills (excludes uninstalled ones)
+ */
+const installedBuiltinSkills = (s: ToolStoreState): BuiltinSkill[] =>
+  (s.builtinSkills || []).filter((skill) => {
+    if (!isBuiltinSkillAvailableInCurrentEnv(skill.identifier)) return false;
+    if (s.uninstalledBuiltinTools.includes(skill.identifier)) return false;
+
+    return true;
+  });
+
+/**
  * Get uninstalled builtin tool identifiers
  */
 const uninstalledBuiltinTools = (s: ToolStoreState): string[] => s.uninstalledBuiltinTools;
@@ -133,6 +180,7 @@ const isBuiltinToolInstalled = (identifier: string) => (s: ToolStoreState) =>
 export const builtinToolSelectors = {
   allMetaList,
   installedAllMetaList,
+  installedBuiltinSkills,
   isBuiltinToolInstalled,
   metaList,
   uninstalledBuiltinTools,

@@ -24,6 +24,7 @@ import { shinyTextStyles } from '@/styles/loading';
 
 import { dataSelectors, useConversationStore } from '../../store';
 import CompressedMessageItem from './CompressedMessageItem';
+import { isCompressionSummaryGenerating, shouldShowCompressedGroupPanel } from './logic';
 
 const STORAGE_KEY_PREFIX = 'compressed-group-tab:';
 
@@ -114,10 +115,12 @@ const CompressedGroupMessage = memo<CompressedGroupMessageProps>(({ id }) => {
 
   // Check if generateSummary operation is running for this message
   const runningOp = useChatStore(operationSelectors.getDeepestRunningOperationByMessage(id));
-  const isGeneratingSummary = runningOp?.type === 'generateSummary';
+  const isGeneratingSummary = isCompressionSummaryGenerating(runningOp?.type);
 
-  // Auto-expand when generating summary to show streaming content
-  const showContent = expanded || isGeneratingSummary;
+  const showPanelContent = shouldShowCompressedGroupPanel({
+    expanded,
+    isGeneratingSummary,
+  });
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
@@ -148,31 +151,31 @@ const CompressedGroupMessage = memo<CompressedGroupMessageProps>(({ id }) => {
           <StreamingMarkdown>{content}</StreamingMarkdown>
         </>
       ) : (
-        <Flexbox align={'center'} distribution={'space-between'} horizontal width={'100%'}>
+        <Flexbox horizontal align={'center'} distribution={'space-between'} width={'100%'}>
           <Tabs
+            compact
             activeKey={isGeneratingSummary ? 'summary' : activeTab}
             className={styles.header}
-            compact
             items={tabItems}
-            onChange={handleTabChange}
             variant={'rounded'}
+            onChange={handleTabChange}
           />
-          <Flexbox gap={4} horizontal>
+          <Flexbox horizontal gap={4}>
             <ActionIcon
               icon={Undo2}
-              onClick={handleCancelCompression}
               size={'small'}
               title={t('compression.cancel')}
+              onClick={handleCancelCompression}
             />
             <ActionIcon
               icon={expanded ? ChevronUp : ChevronDown}
-              onClick={() => toggleCompressedGroupExpanded(id)}
               size={'small'}
+              onClick={() => toggleCompressedGroupExpanded(id)}
             />
           </Flexbox>
         </Flexbox>
       )}
-      {!showContent ? null : activeTab === 'summary' ? (
+      {!showPanelContent ? null : activeTab === 'summary' ? (
         <ScrollShadow className={styles.contentScroll} offset={12} size={12}>
           <Markdown style={{ overflow: 'unset' }} variant={'chat'}>
             {content}

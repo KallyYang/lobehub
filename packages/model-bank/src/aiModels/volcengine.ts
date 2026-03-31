@@ -1,4 +1,9 @@
-import { type AIChatModelCard, type AIImageModelCard } from '../types/aiModel';
+import {
+  type AIChatModelCard,
+  type AIImageModelCard,
+  type AIVideoModelCard,
+} from '../types/aiModel';
+import { seedance15ProParams } from './lobehub/video';
 
 // https://www.volcengine.com/docs/82379/1330310
 
@@ -7,6 +12,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -67,6 +73,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -127,6 +134,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -186,6 +194,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -245,6 +254,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -305,6 +315,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -527,6 +538,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -579,6 +591,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -628,6 +641,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -681,6 +695,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -734,6 +749,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -786,6 +802,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -813,6 +830,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -863,6 +881,7 @@ const doubaoChatModels: AIChatModelCard[] = [
     abilities: {
       functionCall: true,
       reasoning: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -997,6 +1016,7 @@ const doubaoChatModels: AIChatModelCard[] = [
   {
     abilities: {
       functionCall: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -1021,6 +1041,7 @@ const doubaoChatModels: AIChatModelCard[] = [
   {
     abilities: {
       functionCall: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -1045,6 +1066,7 @@ const doubaoChatModels: AIChatModelCard[] = [
   {
     abilities: {
       functionCall: true,
+      video: true,
       vision: true,
     },
     config: {
@@ -1108,6 +1130,48 @@ const doubaoChatModels: AIChatModelCard[] = [
 
 const volcengineImageModels: AIImageModelCard[] = [
   {
+    description:
+      'Doubao-Seedream-5.0-lite is ByteDance’s latest image-generation model. For the first time, it integrates online retrieval capabilities, allowing it to incorporate real-time web information and enhance the timeliness of generated images. The model’s intelligence has also been upgraded, enabling precise interpretation of complex instructions and visual content. Additionally, it offers improved global knowledge coverage, reference consistency, and generation quality in professional scenarios, better meeting enterprise-level visual creation needs.',
+    displayName: 'Seedream 5.0 Lite',
+    enabled: true,
+    id: 'doubao-seedream-5-0-260128',
+    parameters: {
+      height: { default: 2048, max: 16_384, min: 480, step: 1 },
+      imageUrls: { default: [], maxCount: 14, maxFileSize: 10 * 1024 * 1024 },
+      prompt: {
+        default: '',
+      },
+      width: { default: 2048, max: 16_384, min: 480, step: 1 },
+    },
+    pricing: {
+      currency: 'CNY',
+      units: [{ name: 'imageGeneration', rate: 0, strategy: 'fixed', unit: 'image' }],
+    },
+    releasedAt: '2026-01-28',
+    type: 'image',
+  },
+  {
+    description:
+      'Seedream 4.5 is ByteDance’s latest multimodal image model, integrating text-to-image, image-to-image, and batch image generation capabilities, while incorporating commonsense and reasoning abilities. Compared to the previous 4.0 version, it delivers significantly improved generation quality, with better editing consistency and multi-image fusion. It offers more precise control over visual details, producing small text and small faces more naturally, and achieves more harmonious layout and color, enhancing overall aesthetics.',
+    displayName: 'Seedream 4.5',
+    enabled: true,
+    id: 'doubao-seedream-4-5-251128',
+    parameters: {
+      height: { default: 2048, max: 16_384, min: 480, step: 1 },
+      imageUrls: { default: [], maxCount: 14, maxFileSize: 10 * 1024 * 1024 },
+      prompt: {
+        default: '',
+      },
+      width: { default: 2048, max: 16_384, min: 480, step: 1 },
+    },
+    pricing: {
+      currency: 'CNY',
+      units: [{ name: 'imageGeneration', rate: 0.25, strategy: 'fixed', unit: 'image' }],
+    },
+    releasedAt: '2025-11-28',
+    type: 'image',
+  },
+  {
     /*
     // TODO: AIImageModelCard does not support config.deploymentName
     config: {
@@ -1120,23 +1184,16 @@ const volcengineImageModels: AIImageModelCard[] = [
     enabled: true,
     id: 'doubao-seedream-4-0-250828',
     parameters: {
+      height: { default: 2048, max: 16_384, min: 240, step: 1 },
       imageUrls: { default: [], maxCount: 10, maxFileSize: 10 * 1024 * 1024 },
       prompt: {
         default: '',
       },
-      size: {
-        default: '1024x1024',
-        enum: [
-          '2048x2048',
-          '2304x1728',
-          '1728x2304',
-          '2560x1440',
-          '1440x2560',
-          '2496x1664',
-          '1664x2496',
-          '3024x1296',
-        ],
-      },
+      width: { default: 2048, max: 16_384, min: 240, step: 1 },
+    },
+    pricing: {
+      currency: 'CNY',
+      units: [{ name: 'imageGeneration', rate: 0.2, strategy: 'fixed', unit: 'image' }],
     },
     releasedAt: '2025-09-09',
     type: 'image',
@@ -1155,23 +1212,16 @@ const volcengineImageModels: AIImageModelCard[] = [
     id: 'doubao-seedream-3-0-t2i-250415',
     parameters: {
       cfg: { default: 2.5, max: 10, min: 1, step: 0.1 },
+      height: { default: 1024, max: 3549, min: 296, step: 1 },
       prompt: {
         default: '',
       },
       seed: { default: null },
-      size: {
-        default: '1024x1024',
-        enum: [
-          '1024x1024',
-          '864x1152',
-          '1152x864',
-          '1280x720',
-          '720x1280',
-          '832x1248',
-          '1248x832',
-          '1512x648',
-        ],
-      },
+      width: { default: 1024, max: 3549, min: 296, step: 1 },
+    },
+    pricing: {
+      currency: 'CNY',
+      units: [{ name: 'imageGeneration', rate: 0.259, strategy: 'fixed', unit: 'image' }],
     },
     releasedAt: '2025-04-15',
     type: 'image',
@@ -1199,6 +1249,149 @@ const volcengineImageModels: AIImageModelCard[] = [
   },
 ];
 
-export const allModels = [...doubaoChatModels, ...volcengineImageModels];
+const volcengineVideoModels: AIVideoModelCard[] = [
+  {
+    description:
+      'Seedance 1.5 Pro by ByteDance supports text-to-video, image-to-video (first frame, first+last frame), and audio generation synchronized with visuals.',
+    displayName: 'Seedance 1.5 Pro',
+    enabled: true,
+    id: 'doubao-seedance-1-5-pro-251215',
+    organization: 'ByteDance',
+    parameters: seedance15ProParams,
+    releasedAt: '2025-12-15',
+    type: 'video',
+  },
+  {
+    description:
+      'Seedance 1.0 Pro Fast is a comprehensive model designed to minimize cost while maximizing performance, achieving an excellent balance between video generation quality, speed, and price. It inherits the core strengths of Seedance 1.0 Pro, while offering faster generation speeds and more competitive pricing, delivering creators a dual optimization of efficiency and cost.',
+    displayName: 'Seedance 1.0 Pro Fast',
+    id: 'doubao-seedance-1-0-pro-fast-251015',
+    organization: 'ByteDance',
+    parameters: {
+      aspectRatio: {
+        default: '16:9',
+        enum: ['21:9', '16:9', '4:3', '1.1', '3:4', '9:16'],
+      },
+      cameraFixed: { default: false },
+      duration: { default: 5, max: 12, min: 2 },
+      imageUrl: {
+        aspectRatio: { max: 2.5, min: 0.4 },
+        default: null,
+        height: { max: 6000, min: 300 },
+        maxFileSize: 30 * 1024 * 1024,
+        width: { max: 6000, min: 300 },
+      },
+      prompt: { default: '' },
+      resolution: {
+        default: '1080p',
+        enum: ['480p', '720p', '1080p'],
+      },
+      seed: { default: null },
+    },
+    releasedAt: '2025-10-15',
+    type: 'video',
+  },
+  {
+    description:
+      'Seedance 1.0 Pro is a video generation foundation model that supports multi-shot storytelling. It delivers strong performance across multiple dimensions. The model achieves breakthroughs in semantic understanding and instruction following, enabling it to generate 1080P high-definition videos with smooth motion, rich details, diverse styles, and cinematic-level visual aesthetics.',
+    displayName: 'Seedance 1.0 Pro',
+    id: 'doubao-seedance-1-0-pro-250528',
+    organization: 'ByteDance',
+    parameters: {
+      aspectRatio: {
+        default: '16:9',
+        enum: ['21:9', '16:9', '4:3', '1.1', '3:4', '9:16'],
+      },
+      cameraFixed: { default: false },
+      duration: { default: 5, max: 12, min: 2 },
+      endImageUrl: {
+        aspectRatio: { max: 2.5, min: 0.4 },
+        default: null,
+        height: { max: 6000, min: 300 },
+        maxFileSize: 30 * 1024 * 1024,
+        requiresImageUrl: true,
+        width: { max: 6000, min: 300 },
+      },
+      imageUrl: {
+        aspectRatio: { max: 2.5, min: 0.4 },
+        default: null,
+        height: { max: 6000, min: 300 },
+        maxFileSize: 30 * 1024 * 1024,
+        width: { max: 6000, min: 300 },
+      },
+      prompt: { default: '' },
+      resolution: {
+        default: '1080p',
+        enum: ['480p', '720p', '1080p'],
+      },
+      seed: { default: null },
+    },
+    releasedAt: '2025-05-28',
+    type: 'video',
+  },
+  {
+    description:
+      'Stable generation quality with high cost-effectiveness, capable of generating videos from a first frame, first-and-last frames, or reference images.',
+    displayName: 'Seedance 1.0 Lite I2V',
+    id: 'doubao-seedance-1-0-lite-i2v-250428',
+    organization: 'ByteDance',
+    parameters: {
+      aspectRatio: {
+        default: '16:9',
+        enum: ['21:9', '16:9', '4:3', '1.1', '3:4', '9:16'],
+      },
+      cameraFixed: { default: false },
+      endImageUrl: {
+        aspectRatio: { max: 2.5, min: 0.4 },
+        default: null,
+        height: { max: 6000, min: 300 },
+        maxFileSize: 30 * 1024 * 1024,
+        requiresImageUrl: true,
+        width: { max: 6000, min: 300 },
+      },
+      imageUrl: {
+        aspectRatio: { max: 2.5, min: 0.4 },
+        default: null,
+        height: { max: 6000, min: 300 },
+        maxFileSize: 30 * 1024 * 1024,
+        width: { max: 6000, min: 300 },
+      },
+      duration: { default: 5, max: 12, min: 2 },
+      prompt: { default: '' },
+      resolution: {
+        default: '720p',
+        enum: ['480p', '720p', '1080p'],
+      },
+      seed: { default: null },
+    },
+    releasedAt: '2025-04-28',
+    type: 'video',
+  },
+  {
+    description:
+      'Stable generation quality with high cost-effectiveness, capable of generating videos based on text instructions.',
+    displayName: 'Seedance 1.0 Lite T2V',
+    id: 'doubao-seedance-1-0-lite-t2v-250428',
+    organization: 'ByteDance',
+    parameters: {
+      aspectRatio: {
+        default: '16:9',
+        enum: ['21:9', '16:9', '4:3', '1.1', '3:4', '9:16'],
+      },
+      cameraFixed: { default: false },
+      duration: { default: 5, max: 12, min: 2 },
+      prompt: { default: '' },
+      resolution: {
+        default: '720p',
+        enum: ['480p', '720p', '1080p'],
+      },
+      seed: { default: null },
+    },
+    releasedAt: '2025-04-28',
+    type: 'video',
+  },
+];
+
+export const allModels = [...doubaoChatModels, ...volcengineImageModels, ...volcengineVideoModels];
 
 export default allModels;

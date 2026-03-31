@@ -9,7 +9,8 @@ export const skillAuthorSchema = z.object({
 
 export const skillManifestSchema = z
   .object({
-    author: skillAuthorSchema.optional(),
+    // Author can be either a string or an object (for compatibility with market skills)
+    author: z.union([z.string(), skillAuthorSchema]).optional(),
 
     // Required: skill description
     description: z.string().min(1, 'Skill description is required'),
@@ -45,6 +46,13 @@ export interface BuiltinSkill {
   description: string;
   identifier: string;
   name: string;
+  /**
+   * Inline resources for builtin skills.
+   * Key is the file path (e.g. "kb/README.md").
+   * Use `content` field in SkillResourceMeta to inline text content.
+   */
+  resources?: Record<string, SkillResourceMeta>;
+  source: 'builtin';
 }
 
 // ===== Skill Source =====
@@ -74,6 +82,11 @@ export interface ParsedZipSkill {
 // ===== Resource Types =====
 
 export interface SkillResourceMeta {
+  /**
+   * Inline text content for builtin skill resources.
+   * When set, the resource is served directly from memory instead of S3.
+   */
+  content?: string;
   documentId?: string;
   fileHash: string;
   size: number;
@@ -81,6 +94,7 @@ export interface SkillResourceMeta {
 
 export interface SkillResourceTreeNode {
   children?: SkillResourceTreeNode[];
+  content?: string;
   name: string;
   path: string;
   type: 'file' | 'directory';
@@ -88,9 +102,10 @@ export interface SkillResourceTreeNode {
 
 export interface SkillResourceContent {
   content: string;
-  encoding: 'utf-8' | 'base64';
+  encoding: 'utf8' | 'base64';
   fileHash: string;
   fileType: string;
+  fullPath?: string;
   path: string;
   size: number;
 }

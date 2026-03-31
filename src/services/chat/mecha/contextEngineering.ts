@@ -1,50 +1,76 @@
+import { LobeActivatorIdentifier } from '@lobechat/builtin-tool-activator';
 import { AgentBuilderIdentifier } from '@lobechat/builtin-tool-agent-builder';
+import { AgentManagementIdentifier } from '@lobechat/builtin-tool-agent-management';
+import { CredsIdentifier, type CredSummary, generateCredsList } from '@lobechat/builtin-tool-creds';
 import { GroupAgentBuilderIdentifier } from '@lobechat/builtin-tool-group-agent-builder';
 import { GTDIdentifier } from '@lobechat/builtin-tool-gtd';
 import { isDesktop, KLAVIS_SERVER_TYPES, LOBEHUB_SKILL_PROVIDERS } from '@lobechat/const';
-import {
-  type AgentBuilderContext,
-  type AgentGroupConfig,
-  type GroupAgentBuilderContext,
-  type GroupOfficialToolItem,
-  type GTDConfig,
-  type LobeToolManifest,
-  type MemoryContext,
-  type UserMemoryData,
+import type {
+  AgentBuilderContext,
+  AgentContextDocument,
+  AgentGroupConfig,
+  AgentManagementContext,
+  GroupAgentBuilderContext,
+  GroupOfficialToolItem,
+  GTDConfig,
+  LobeToolManifest,
+  MemoryContext,
+  ToolDiscoveryConfig,
+  UserMemoryData,
 } from '@lobechat/context-engine';
-import { MessagesEngine } from '@lobechat/context-engine';
-import { historySummaryPrompt } from '@lobechat/prompts';
 import {
-  type OpenAIChatMessage,
-  type RuntimeInitialContext,
-  type RuntimeStepContext,
-  type UIChatMessage,
+  AGENT_DOCUMENT_INJECTION_POSITIONS,
+  MessagesEngine,
+  resolveTopicReferences,
+} from '@lobechat/context-engine';
+import { historySummaryPrompt } from '@lobechat/prompts';
+import type {
+  OpenAIChatMessage,
+  RuntimeInitialContext,
+  RuntimeStepContext,
+  UIChatMessage,
 } from '@lobechat/types';
 import debug from 'debug';
 
 import { isCanUseFC } from '@/helpers/isCanUseFC';
 import { VARIABLE_GENERATORS } from '@/helpers/parserPlaceholder';
+import { lambdaClient } from '@/libs/trpc/client';
+import { agentDocumentService } from '@/services/agentDocument';
 import { notebookService } from '@/services/notebook';
 import { getAgentStoreState } from '@/store/agent';
 import { agentSelectors } from '@/store/agent/selectors';
 import { getChatGroupStoreState } from '@/store/agentGroup';
 import { agentGroupSelectors } from '@/store/agentGroup/selectors';
+import { getAiInfraStoreState } from '@/store/aiInfra';
 import { getChatStoreState } from '@/store/chat';
+import { topicSelectors } from '@/store/chat/selectors';
 import { getToolStoreState } from '@/store/tool';
 import {
   builtinToolSelectors,
   klavisStoreSelectors,
   lobehubSkillStoreSelectors,
+  toolSelectors,
 } from '@/store/tool/selectors';
 
 import { isCanUseVideo, isCanUseVision } from '../helper';
-import {
-  combineUserMemoryData,
-  resolveGlobalIdentities,
-  resolveTopicMemories,
-} from './memoryManager';
+import { combineUserMemoryData, resolveTopicMemories, resolveUserPersona } from './memoryManager';
+import { resolveClientSkills } from './skillEngineering';
+import { stripActionTagsFromText } from './skillPreload';
 
 const log = debug('context-engine:contextEngineering');
+
+const VALID_DOCUMENT_POSITIONS = new Set<AgentContextDocument['loadPosition']>(
+  AGENT_DOCUMENT_INJECTION_POSITIONS,
+);
+
+const normalizeDocumentPosition = (
+  position: string | null | undefined,
+): AgentContextDocument['loadPosition'] | undefined => {
+  if (!position) return undefined;
+  return VALID_DOCUMENT_POSITIONS.has(position as AgentContextDocument['loadPosition'])
+    ? (position as AgentContextDocument['loadPosition'])
+    : undefined;
+};
 
 interface ContextEngineeringContext {
   /** Agent Builder context for injecting current agent info */
@@ -69,6 +95,8 @@ interface ContextEngineeringContext {
   memoryContext?: MemoryContext;
   messages: UIChatMessage[];
   model: string;
+  /** Agent's enabled plugin/tool/skill identifiers (from agentConfig.plugins) */
+  plugins?: string[];
   provider: string;
   sessionId?: string;
   /**
@@ -81,6 +109,39 @@ interface ContextEngineeringContext {
   /** Topic ID for GTD context injection */
   topicId?: string;
 }
+
+type TextContentPart = {
+  text?: string;
+  type?: string;
+  [key: string]: unknown;
+};
+
+const preprocessActionTags = (messages: UIChatMessage[]): UIChatMessage[] =>
+  messages.map((message) => {
+    if (message.role !== 'user') return message;
+
+    if (typeof message.content === 'string') {
+      return {
+        ...message,
+        content: stripActionTagsFromText(message.content),
+      };
+    }
+
+    if (Array.isArray(message.content)) {
+      const contentParts = message.content as TextContentPart[];
+
+      return {
+        ...message,
+        content: contentParts.map((part) =>
+          part?.type === 'text' && typeof part.text === 'string'
+            ? { ...part, text: stripActionTagsFromText(part.text) }
+            : part,
+        ),
+      } as unknown as UIChatMessage;
+    }
+
+    return message;
+  });
 
 // REVIEW: Maybe we can constrain identity, preference, exp to reorder or trim the context instead of passing everything in
 export const contextEngineering = async ({
@@ -99,19 +160,25 @@ export const contextEngineering = async ({
   agentId,
   groupId,
   initialContext,
+  plugins,
   stepContext,
   topicId,
   memoryContext,
 }: ContextEngineeringContext): Promise<OpenAIChatMessage[]> => {
+  messages = preprocessActionTags(messages);
+
   log('tools: %o', tools);
 
   // Check if Agent Builder tool is enabled
   const isAgentBuilderEnabled = tools?.includes(AgentBuilderIdentifier) ?? false;
   // Check if Group Agent Builder tool is enabled
   const isGroupAgentBuilderEnabled = tools?.includes(GroupAgentBuilderIdentifier) ?? false;
+  // Check if Agent Management tool is enabled
+  const isAgentManagementEnabled = tools?.includes(AgentManagementIdentifier) ?? false;
 
   log('isAgentBuilderEnabled: %s', isAgentBuilderEnabled);
   log('isGroupAgentBuilderEnabled: %s', isGroupAgentBuilderEnabled);
+  log('isAgentManagementEnabled: %s', isAgentManagementEnabled);
 
   // Build agent group configuration if groupId is provided
   let agentGroup: AgentGroupConfig | undefined;
@@ -157,6 +224,7 @@ export const contextEngineering = async ({
 
   // Get agent store state (used for both group agent builder context and file/knowledge base)
   const agentStoreState = getAgentStoreState();
+  const resolvedAgentId = agentId || agentStoreState.activeAgentId;
 
   // Build group agent builder context if Group Agent Builder is enabled
   // Note: Uses activeGroupId from chatStore to get the group being edited
@@ -283,13 +351,38 @@ export const contextEngineering = async ({
     .filter((kb) => kb.enabled)
     .map((kb) => ({ description: kb.description, id: kb.id, name: kb.name }));
 
-  // Resolve user memories: topic memories and global identities are independent layers
+  let agentDocuments: AgentContextDocument[] | undefined;
+
+  if (resolvedAgentId) {
+    try {
+      const documents = await agentDocumentService.getDocuments({ agentId: resolvedAgentId });
+      agentDocuments = documents.map((doc) => ({
+        content: doc.content,
+        filename: doc.filename,
+        id: doc.id,
+        loadRules: doc.loadRules,
+        policyLoadFormat: doc.policy?.context?.policyLoadFormat || doc.policyLoadFormat,
+        loadPosition: normalizeDocumentPosition(
+          doc.policy?.context?.position || doc.policyLoadPosition,
+        ),
+        policyId: doc.templateId,
+        title: doc.title,
+      }));
+
+      log('agentDocuments resolved: %d', agentDocuments.length);
+    } catch (error) {
+      // Agent documents are optional context; failure should not block message processing.
+      log('Failed to resolve agent documents for agent %s: %O', resolvedAgentId, error);
+    }
+  }
+
+  // Resolve user memories: topic memories and user persona are independent layers
   // Both functions now read from cache only (no network requests) to avoid blocking sendMessage
   let userMemoryData: UserMemoryData | undefined;
   if (enableUserMemories) {
     const topicMemories = resolveTopicMemories();
-    const globalIdentities = resolveGlobalIdentities();
-    userMemoryData = combineUserMemoryData(topicMemories, globalIdentities);
+    const persona = resolveUserPersona();
+    userMemoryData = combineUserMemoryData(topicMemories, persona);
   }
 
   // Resolve GTD context: plan and todos
@@ -336,6 +429,30 @@ export const contextEngineering = async ({
     }
   }
 
+  // Resolve user credentials context for creds tool
+  // Creds tool must be enabled to fetch credentials
+  const isCredsEnabled = tools?.includes(CredsIdentifier) ?? false;
+  let credsList: CredSummary[] | undefined;
+
+  if (isCredsEnabled) {
+    try {
+      const credsResult = await lambdaClient.market.creds.list.query();
+      const userCreds = (credsResult as any)?.data ?? [];
+      credsList = userCreds.map(
+        (cred: any): CredSummary => ({
+          description: cred.description,
+          key: cred.key,
+          name: cred.name,
+          type: cred.type,
+        }),
+      );
+      log('Creds context resolved: count=%d', credsList?.length ?? 0);
+    } catch (error) {
+      // Silently fail - creds context is optional
+      log('Failed to resolve creds context:', error);
+    }
+  }
+
   const userMemoryConfig =
     enableUserMemories && userMemoryData
       ? {
@@ -343,6 +460,149 @@ export const contextEngineering = async ({
           memories: userMemoryData,
         }
       : undefined;
+
+  // Build tool discovery config if lobe-activator is enabled
+  const enabledToolSet = new Set(tools || []);
+  const isLobeToolsEnabled = enabledToolSet.has(LobeActivatorIdentifier);
+
+  let toolDiscoveryConfig: ToolDiscoveryConfig | undefined;
+  if (isLobeToolsEnabled) {
+    const toolState = getToolStoreState();
+    const availableTools = toolSelectors
+      .availableToolsForDiscovery(toolState)
+      .filter((tool) => !enabledToolSet.has(tool.identifier));
+
+    if (availableTools.length > 0) {
+      toolDiscoveryConfig = { availableTools };
+      log('Tool discovery config built, available tools count: %d', availableTools.length);
+    }
+  }
+
+  // Build Agent Management context if Agent Management tool is enabled
+  let agentManagementContext: AgentManagementContext | undefined;
+  if (isAgentManagementEnabled) {
+    // Get enabled providers and models from aiInfra store
+    const aiProviderState = getAiInfraStoreState();
+    const enabledChatModelList = aiProviderState.enabledChatModelList || [];
+
+    // Build availableProviders from enabled chat models (only user-enabled providers)
+    // Limit to first 5 providers to avoid context bloat
+    const availableProviders = enabledChatModelList.slice(0, 5).map((provider) => ({
+      id: provider.id,
+      models: provider.children.map((model) => ({
+        abilities: model.abilities,
+        description: model.description,
+        id: model.id,
+        name: model.displayName || model.id,
+      })),
+      name: provider.name,
+    }));
+
+    // Get tool state for plugins
+    const toolState = getToolStoreState();
+
+    // Build availablePlugins from all plugin sources
+    const availablePlugins = [];
+
+    // Builtin tools (use allMetaList to include hidden tools like web-browsing, cloud-sandbox, etc.)
+    // Exclude only truly internal tools (agent-management itself, agent-builder, page-agent)
+    const allBuiltinTools = builtinToolSelectors.allMetaList(toolState);
+    const klavisIdentifiers = new Set(KLAVIS_SERVER_TYPES.map((t) => t.identifier));
+    const INTERNAL_TOOLS = new Set([
+      'lobe-agent-management', // Don't show agent-management in its own context
+      'lobe-agent-builder', // Used for editing current agent, not for creating new agents
+      'lobe-group-agent-builder', // Used for editing current group, not for creating new agents
+      'lobe-page-agent', // Page-editor specific tool
+    ]);
+
+    for (const tool of allBuiltinTools) {
+      // Skip Klavis tools in builtin list (they'll be shown separately)
+      if (klavisIdentifiers.has(tool.identifier)) continue;
+      // Skip internal tools
+      if (INTERNAL_TOOLS.has(tool.identifier)) continue;
+
+      availablePlugins.push({
+        description: tool.meta?.description,
+        identifier: tool.identifier,
+        name: tool.meta?.title || tool.identifier,
+        type: 'builtin' as const,
+      });
+    }
+
+    // Klavis tools (if enabled)
+    const isKlavisEnabled =
+      typeof window !== 'undefined' &&
+      window.global_serverConfigStore?.getState()?.serverConfig?.enableKlavis;
+
+    if (isKlavisEnabled) {
+      for (const klavisType of KLAVIS_SERVER_TYPES) {
+        availablePlugins.push({
+          description: klavisType.description,
+          identifier: klavisType.identifier,
+          name: klavisType.label,
+          type: 'klavis' as const,
+        });
+      }
+    }
+
+    // LobehubSkill providers (if enabled)
+    const isLobehubSkillEnabled =
+      typeof window !== 'undefined' &&
+      window.global_serverConfigStore?.getState()?.serverConfig?.enableLobehubSkill;
+
+    if (isLobehubSkillEnabled) {
+      for (const provider of LOBEHUB_SKILL_PROVIDERS) {
+        availablePlugins.push({
+          description: provider.description,
+          identifier: provider.id,
+          name: provider.label,
+          type: 'lobehub-skill' as const,
+        });
+      }
+    }
+
+    agentManagementContext = {
+      availablePlugins,
+      availableProviders,
+    };
+
+    log(
+      'agentManagementContext built: %d providers, %d plugins',
+      agentManagementContext.availableProviders?.length ?? 0,
+      agentManagementContext.availablePlugins?.length ?? 0,
+    );
+  }
+
+  // Inject mentionedAgents independently of isAgentManagementEnabled.
+  // When user @mentions an agent, delegation context must always be injected
+  // even if the agent doesn't have agent-management tool in its config.
+  const hasMentionedAgents =
+    initialContext?.mentionedAgents && initialContext.mentionedAgents.length > 0;
+
+  if (hasMentionedAgents) {
+    agentManagementContext = {
+      ...agentManagementContext,
+      mentionedAgents: initialContext!.mentionedAgents,
+    };
+    log('mentionedAgents injected: %d agents', initialContext!.mentionedAgents!.length);
+  }
+
+  // Resolve topic references from messages containing <refer_topic> tags
+  const topicReferences = await resolveTopicReferences(
+    messages,
+    async (topicId: string) => {
+      const topic = topicSelectors.getTopicById(topicId)(getChatStoreState());
+      return topic ?? null;
+    },
+    async (topicId: string) => {
+      const { messageService } = await import('@/services/message');
+      const msgs = await messageService.getMessages({ agentId, groupId, topicId });
+      return msgs.map((m) => ({
+        content: typeof m.content === 'string' ? m.content : '',
+        role: m.role,
+      }));
+    },
+  );
 
   // Create MessagesEngine with injected dependencies
   const engine = new MessagesEngine({
@@ -369,6 +629,7 @@ export const contextEngineering = async ({
       fileContents,
       knowledgeBases,
     },
+    agentDocuments,
 
     // Messages
     messages,
@@ -380,6 +641,14 @@ export const contextEngineering = async ({
     // runtime context
     initialContext,
     stepContext,
+
+    // Skills configuration — expose all installed skills so the AI can discover and activate them
+    skillsConfig: {
+      enabledSkills: plugins ? resolveClientSkills(plugins).skills : undefined,
+    },
+
+    // Tool Discovery configuration
+    toolDiscoveryConfig,
 
     // Tools configuration
     toolsConfig: {
@@ -393,6 +662,8 @@ export const contextEngineering = async ({
     // Variable generators
     variableGenerators: {
       ...VARIABLE_GENERATORS,
+      // NOTICE: required by builtin-tool-creds/src/systemRole.ts
+      CREDS_LIST: () => (credsList ? generateCredsList(credsList) : ''),
       // NOTICE(@nekomeowww): required by builtin-tool-memory/src/systemRole.ts
       memory_effort: () => (userMemoryConfig ? (memoryContext?.effort ?? '') : ''),
     },
@@ -400,8 +671,10 @@ export const contextEngineering = async ({
     // Extended contexts - only pass when enabled
     ...(isAgentBuilderEnabled && { agentBuilderContext }),
     ...(isGroupAgentBuilderEnabled && { groupAgentBuilderContext }),
+    ...((isAgentManagementEnabled || hasMentionedAgents) && { agentManagementContext }),
     ...(agentGroup && { agentGroup }),
     ...(gtdConfig && { gtd: gtdConfig }),
+    ...(topicReferences && topicReferences.length > 0 && { topicReferences }),
   });
 
   log('Input messages count: %d', messages.length);

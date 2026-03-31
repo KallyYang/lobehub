@@ -1,4 +1,3 @@
-/* eslint-disable sort-keys-fix/sort-keys-fix, typescript-sort-keys/interface */
 // Note: To make the code more logic and readable, we just disable the auto sort key eslint rule
 // DON'T REMOVE THE FIRST LINE
 import { chainSummaryTitle } from '@lobechat/prompts';
@@ -18,10 +17,9 @@ import { topicService } from '@/services/topic';
 import { type ChatStore } from '@/store/chat';
 import { topicMapKey } from '@/store/chat/utils/topicMapKey';
 import { useGlobalStore } from '@/store/global';
-import { globalHelpers } from '@/store/global/helpers';
 import { type StoreSetter } from '@/store/types';
 import { useUserStore } from '@/store/user';
-import { systemAgentSelectors } from '@/store/user/selectors';
+import { systemAgentSelectors, userGeneralSettingsSelectors } from '@/store/user/selectors';
 import { type ChatTopic, type CreateTopicParams } from '@/types/topic';
 import { merge } from '@/utils/merge';
 import { setNamespace } from '@/utils/storeDebug';
@@ -222,7 +220,13 @@ export class ChatTopicActionImpl {
 
         internal_updateTopicTitleInSummary(topicId, output);
       },
-      params: merge(topicConfig, chainSummaryTitle(messages, globalHelpers.getCurrentLanguage())),
+      params: merge(
+        topicConfig,
+        chainSummaryTitle(
+          messages,
+          userGeneralSettingsSelectors.currentResponseLanguage(useUserStore.getState()),
+        ),
+      ),
       trace: this.#get().getCurrentTracePayload({
         traceName: TraceNameMap.SummaryTopicTitle,
         topicId,

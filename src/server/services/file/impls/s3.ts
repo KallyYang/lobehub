@@ -65,16 +65,17 @@ export class S3StaticFileImpl implements FileServiceImpl {
       key = extractedKey;
     }
 
-    // If bucket is not set public read, the preview address needs to be regenerated each time
-    if (!fileEnv.S3_SET_ACL) {
+    // If bucket is not set public read, or S3_PUBLIC_DOMAIN is not configured,
+    // the preview address needs to be regenerated each time via presigned URL
+    if (!fileEnv.S3_SET_ACL || !fileEnv.S3_PUBLIC_DOMAIN) {
       return await this.createPreSignedUrlForPreview(key, expiresIn);
     }
 
     if (fileEnv.S3_ENABLE_PATH_STYLE) {
-      return urlJoin(fileEnv.S3_PUBLIC_DOMAIN!, fileEnv.S3_BUCKET!, key);
+      return urlJoin(fileEnv.S3_PUBLIC_DOMAIN, fileEnv.S3_BUCKET!, key);
     }
 
-    return urlJoin(fileEnv.S3_PUBLIC_DOMAIN!, key);
+    return urlJoin(fileEnv.S3_PUBLIC_DOMAIN, key);
   }
 
   async getKeyFromFullUrl(url: string): Promise<string | null> {
@@ -111,6 +112,11 @@ export class S3StaticFileImpl implements FileServiceImpl {
 
   async uploadMedia(key: string, buffer: Buffer): Promise<{ key: string }> {
     await this.s3.uploadMedia(key, buffer);
+    return { key };
+  }
+
+  async uploadBuffer(key: string, buffer: Buffer, contentType: string): Promise<{ key: string }> {
+    await this.s3.uploadBuffer(key, buffer, contentType);
     return { key };
   }
 }

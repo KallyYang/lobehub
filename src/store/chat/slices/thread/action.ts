@@ -1,4 +1,3 @@
-/* eslint-disable sort-keys-fix/sort-keys-fix, typescript-sort-keys/interface */
 // Disable the auto sort key eslint rule to make the code more logic and readable
 import { LOADING_FLAT } from '@lobechat/const';
 import { chainSummaryTitle } from '@lobechat/prompts';
@@ -16,10 +15,9 @@ import { chatService } from '@/services/chat';
 import { threadService } from '@/services/thread';
 import { threadSelectors } from '@/store/chat/selectors';
 import { type ChatStore } from '@/store/chat/store';
-import { globalHelpers } from '@/store/global/helpers';
 import { type StoreSetter } from '@/store/types';
 import { useUserStore } from '@/store/user';
-import { systemAgentSelectors } from '@/store/user/selectors';
+import { systemAgentSelectors, userGeneralSettingsSelectors } from '@/store/user/selectors';
 import { merge } from '@/utils/merge';
 import { setNamespace } from '@/utils/storeDebug';
 
@@ -203,7 +201,13 @@ export class ChatThreadActionImpl {
 
         internal_updateThreadTitleInSummary(threadId, output);
       },
-      params: merge(threadConfig, chainSummaryTitle(messages, globalHelpers.getCurrentLanguage())),
+      params: merge(
+        threadConfig,
+        chainSummaryTitle(
+          messages,
+          userGeneralSettingsSelectors.currentResponseLanguage(useUserStore.getState()),
+        ),
+      ),
     });
   };
 

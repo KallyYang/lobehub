@@ -4,12 +4,13 @@ import { Flexbox } from '@lobehub/ui';
 import { memo, useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 import { VList } from 'virtua';
 
-import { useFolderPath } from '@/app/[variants]/(main)/resource/features/hooks/useFolderPath';
-import { useResourceManagerStore } from '@/app/[variants]/(main)/resource/features/store';
+import { useFolderPath } from '@/routes/(main)/resource/features/hooks/useFolderPath';
+import { useResourceManagerStore } from '@/routes/(main)/resource/features/store';
 import { fileService } from '@/services/file';
 import { useFileStore } from '@/store/file';
 import { type ResourceQueryParams } from '@/types/resource';
 
+import { KnowledgeBaseListProvider } from '../KnowledgeBaseListProvider';
 import { HierarchyNode } from './HierarchyNode';
 import TreeSkeleton from './TreeSkeleton';
 import {
@@ -368,28 +369,30 @@ const LibraryHierarchy = memo(() => {
       : currentFolderSlug;
 
   return (
-    <Flexbox paddingInline={4} style={{ height: '100%' }}>
-      <VList
-        bufferSize={typeof window !== 'undefined' ? window.innerHeight : 0}
-        style={{ height: '100%' }}
-      >
-        {visibleNodes.map(({ item, key, level }) => (
-          <div key={key} style={{ paddingBottom: 2 }}>
-            <HierarchyNode
-              expandedFolders={expandedFolders}
-              folderChildrenCache={folderChildrenCache}
-              item={item}
-              level={level}
-              loadingFolders={loadingFolders}
-              selectedKey={selectedKey}
-              updateKey={updateKey}
-              onLoadFolder={handleLoadFolder}
-              onToggleFolder={handleToggleFolder}
-            />
-          </div>
-        ))}
-      </VList>
-    </Flexbox>
+    <KnowledgeBaseListProvider>
+      <Flexbox paddingInline={4} style={{ height: '100%' }}>
+        <VList
+          bufferSize={typeof window !== 'undefined' ? window.innerHeight : 0}
+          style={{ height: '100%' }}
+        >
+          {visibleNodes.map(({ item, key, level }) => (
+            <div key={key} style={{ paddingBottom: 2 }}>
+              <HierarchyNode
+                expandedFolders={expandedFolders}
+                folderChildrenCache={folderChildrenCache}
+                item={item}
+                level={level}
+                loadingFolders={loadingFolders}
+                selectedKey={selectedKey}
+                updateKey={updateKey}
+                onLoadFolder={handleLoadFolder}
+                onToggleFolder={handleToggleFolder}
+              />
+            </div>
+          ))}
+        </VList>
+      </Flexbox>
+    </KnowledgeBaseListProvider>
   );
 });
 
