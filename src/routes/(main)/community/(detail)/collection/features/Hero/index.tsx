@@ -90,17 +90,18 @@ const styles = createStaticStyles(({ css }) => ({
 }));
 
 interface HeroProps {
-  coverUrl?: string;
-  createdAt?: string;
-  description: string;
+  cover?: string;
+  createdAt: string;
+  description?: string;
   itemCount: number;
   mobile?: boolean;
+  summary: string;
   title: string;
-  updatedAt?: string;
+  updatedAt: string;
 }
 
 const Hero = memo<HeroProps>(
-  ({ title, description, itemCount, coverUrl, createdAt, updatedAt, mobile }) => {
+  ({ title, summary, description, itemCount, cover, createdAt, updatedAt, mobile }) => {
     const { t } = useTranslation('discover');
     const navigate = useNavigate();
 
@@ -108,25 +109,23 @@ const Hero = memo<HeroProps>(
       navigate('/community/skill');
     }, [navigate]);
 
+    // Use description if available, otherwise fall back to summary
+    const displayDescription = description || summary;
+
     return (
       <div className={styles.container}>
-        {coverUrl && (
-          <div className={styles.cover} style={{ backgroundImage: `url(${coverUrl})` }} />
-        )}
+        {cover && <div className={styles.cover} style={{ backgroundImage: `url(${cover})` }} />}
         <ActionIcon className={styles.backButton} icon={ArrowLeftIcon} onClick={handleBack} />
         <Flexbox gap={16} style={{ maxWidth: 600, position: 'relative', zIndex: 1 }}>
           <Tag className={styles.tag}>{t('skills.collection.editorCollection')}</Tag>
           <h1 className={styles.title}>{title}</h1>
-          <p className={styles.description}>{description}</p>
+          <p className={styles.description}>{displayDescription}</p>
           <Flexbox horizontal align={'center'} className={styles.author} gap={8}>
             <span>{t('skills.collection.skillCount', { count: itemCount })}</span>
             {(updatedAt || createdAt) && (
               <>
                 <span>·</span>
-                <PublishedTime
-                  date={(updatedAt || createdAt) as string}
-                  template={'MMM DD, YYYY'}
-                />
+                <PublishedTime date={updatedAt || createdAt} template={'MMM DD, YYYY'} />
               </>
             )}
           </Flexbox>

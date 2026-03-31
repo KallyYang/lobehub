@@ -66,7 +66,7 @@ const styles = createStaticStyles(({ css }) => ({
 
 interface CollectionCardProps extends SkillCollectionItem {}
 
-const CollectionCard = memo<CollectionCardProps>(({ title, description, slug, coverUrl }) => {
+const CollectionCard = memo<CollectionCardProps>(({ title, summary, slug, cover }) => {
   const isDark = useIsDark();
   const navigate = useNavigate();
 
@@ -81,7 +81,7 @@ const CollectionCard = memo<CollectionCardProps>(({ title, description, slug, co
       style={{ cursor: 'pointer' }}
       onClick={handleClick}
     >
-      {coverUrl && <div className={styles.cover} style={{ backgroundImage: `url(${coverUrl})` }} />}
+      {cover && <div className={styles.cover} style={{ backgroundImage: `url(${cover})` }} />}
       <Flexbox gap={8} style={{ position: 'relative', zIndex: 1 }}>
         <Text className={cx(styles.title, isDark ? styles.title_dark : styles.title_light)}>
           {title}
@@ -90,7 +90,7 @@ const CollectionCard = memo<CollectionCardProps>(({ title, description, slug, co
           className={cx(styles.desc, isDark ? styles.desc_dark : styles.desc_light)}
           ellipsis={{ rows: 3 }}
         >
-          {description}
+          {summary}
         </Text>
       </Flexbox>
     </Block>

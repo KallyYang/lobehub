@@ -98,21 +98,25 @@ export type SkillCategoryItem = MarketSkillCategory;
 // ============================== Skill Collections ==============================
 
 export interface SkillCollectionItem {
-  coverUrl?: string;
-  createdAt?: string;
-  description: string;
-  icon?: string;
+  cover?: string;
+  createdAt: string;
+  icon: string;
   id: number;
   itemCount: number;
-  position?: number;
+  position: number;
   slug: string;
+  summary: string;
   title: string;
-  updatedAt?: string;
+  updatedAt: string;
 }
 
 export interface SkillCollectionDetail extends SkillCollectionItem {
-  items?: DiscoverSkillItem[];
-  skills?: DiscoverSkillItem[];
+  currentPage: number;
+  description?: string;
+  items: DiscoverSkillItem[];
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
 }
 
 export type SkillCollectionListResponse = SkillCollectionItem[];

@@ -121,7 +121,7 @@ const EditorsPick = memo(() => {
             isDark ? styles.description_dark : styles.description_light,
           )}
         >
-          {collection.description}
+          {collection.summary}
         </p>
         <Flexbox horizontal gap={12} style={{ marginBlockStart: 8 }}>
           <Button

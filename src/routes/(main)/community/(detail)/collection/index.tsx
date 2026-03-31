@@ -30,18 +30,17 @@ const CollectionDetailPage = memo<CollectionDetailPageProps>(({ mobile }) => {
   return (
     <Flexbox data-testid="collection-detail-content" gap={40} width={'100%'}>
       <Hero
-        coverUrl={data.coverUrl}
+        cover={data.cover}
         createdAt={data.createdAt}
         description={data.description}
         itemCount={data.itemCount}
         mobile={mobile}
+        summary={data.summary}
         title={data.title}
         updatedAt={data.updatedAt}
       />
-      <SkillsList skills={data.skills || data.items || []} />
-      {((data.skills || data.items)?.length ?? 0) > 0 && (
-        <InstallCTA collectionTitle={data.title} skills={data.skills || data.items || []} />
-      )}
+      <SkillsList skills={data.items} />
+      {data.items.length > 0 && <InstallCTA collectionTitle={data.title} skills={data.items} />}
       <MoreCollections currentSlug={slug} />
     </Flexbox>
   );
