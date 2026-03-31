@@ -4,9 +4,12 @@ import { type SlashOptions } from '@lobehub/editor';
 import { type ChatInputActionsProps } from '@lobehub/editor/react';
 import { type MenuProps } from '@lobehub/ui';
 import { Alert, Flexbox } from '@lobehub/ui';
-import { type ReactNode } from 'react';
+import { type ReactNode, useEffect, useRef } from 'react';
 import { memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+
+import { DEFAULT_SECURITY_BLACKLIST, InterventionChecker } from '@lobechat/agent-runtime';
+import { safeParseJSON } from '@lobechat/utils';
 
 import { type ActionKeys } from '@/features/ChatInput';
 import { ChatInputProvider, DesktopChatInput } from '@/features/ChatInput';
@@ -17,6 +20,8 @@ import {
 import { useChatStore } from '@/store/chat';
 import { operationSelectors } from '@/store/chat/selectors';
 import { fileChatSelectors, useFileStore } from '@/store/file';
+import { useUserStore } from '@/store/user';
+import { toolInterventionSelectors } from '@/store/user/selectors';
 
 import WideScreenContainer from '../../WideScreenContainer';
 import InterventionBar from '../InterventionBar';
@@ -135,6 +140,38 @@ const ChatInput = memo<ChatInputProps>(
       },
     );
     const hasPendingInterventions = pendingInterventions.length > 0;
+
+    // Auto-approval state
+    const approvalMode = useUserStore(toolInterventionSelectors.approvalMode);
+    const approveToolCall = useConversationStore((s) => s.approveToolCall);
+    const autoApprovedRef = useRef<Set<string>>(new Set());
+
+    // Auto-approve pending interventions when in auto-run mode
+    // Excludes tools blocked by security blacklist - those still require manual approval
+    useEffect(() => {
+      if (approvalMode !== 'auto-run' || pendingInterventions.length === 0) return;
+
+      for (const intervention of pendingInterventions) {
+        const { toolCallId, toolMessageId, assistantGroupId, requestArgs } = intervention;
+
+        // Skip if already auto-approved in this session
+        if (autoApprovedRef.current.has(toolCallId)) continue;
+
+        // Check if tool is blocked by security blacklist - don't auto-approve if blocked
+        const parsedArgs = safeParseJSON(requestArgs || '') ?? {};
+        const securityCheck = InterventionChecker.checkSecurityBlacklist(
+          DEFAULT_SECURITY_BLACKLIST,
+          parsedArgs,
+        );
+        if (securityCheck.blocked) continue;
+
+        // Mark as auto-approved before calling to prevent duplicate approvals
+        autoApprovedRef.current.add(toolCallId);
+
+        // Auto-approve the tool call
+        approveToolCall(toolMessageId, assistantGroupId ?? '');
+      }
+    }, [approvalMode, pendingInterventions, approveToolCall]);
 
     // Send message error from ConversationStore
     const sendMessageErrorMsg = useConversationStore(messageStateSelectors.sendMessageError);
