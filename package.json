@@ -536,6 +536,7 @@
     ],
     "overrides": {
       "@types/react": "19.2.13",
+      "axios": "1.13.6",
       "better-auth": "1.4.6",
       "better-call": "1.1.8",
       "drizzle-orm": "^0.45.1",
