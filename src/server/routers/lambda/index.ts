@@ -4,6 +4,7 @@
 import { accountDeletionRouter } from '@/business/server/lambda-routers/accountDeletion';
 import { referralRouter } from '@/business/server/lambda-routers/referral';
 import { spendRouter } from '@/business/server/lambda-routers/spend';
+import { storageOverageRouter } from '@/business/server/lambda-routers/storageOverage';
 import { subscriptionRouter } from '@/business/server/lambda-routers/subscription';
 import { topUpRouter } from '@/business/server/lambda-routers/topUp';
 import { publicProcedure, router } from '@/libs/trpc/lambda';
@@ -116,6 +117,7 @@ export const lambdaRouter = router({
   accountDeletion: accountDeletionRouter,
   referral: referralRouter,
   spend: spendRouter,
+  storageOverage: storageOverageRouter,
   subscription: subscriptionRouter,
   topUp: topUpRouter,
 });
