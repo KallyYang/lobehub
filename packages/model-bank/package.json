@@ -4,7 +4,9 @@
   "private": true,
   "exports": {
     ".": "./src/index.ts",
+    "./modelProvider": "./src/const/modelProvider.ts",
     "./modelProviders": "./src/modelProviders/index.ts",
+    "./providerRuntime": "./src/modelProviders/runtime.ts",
     "./modelProviders/lobehub": "./src/modelProviders/lobehub.ts",
     "./ai21": "./src/aiModels/ai21.ts",
     "./ai302": "./src/aiModels/ai302.ts",

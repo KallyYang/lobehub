@@ -78,3 +78,8 @@ export enum ModelProvider {
   ZeroOne = 'zeroone',
   ZhiPu = 'zhipu',
 }
+
+const modelProviderSet = new Set<string>(Object.values(ModelProvider));
+
+export const isBuiltinModelProvider = (provider: string): provider is ModelProvider =>
+  modelProviderSet.has(provider);

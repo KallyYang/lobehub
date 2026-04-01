@@ -1,17 +1,13 @@
-import {
-  getModelPropertyWithFallback,
-  resolveImageSinglePrice,
-  resolveVideoSinglePrice,
-} from '@lobechat/model-runtime';
+import type * as ModelRuntime from '@lobechat/model-runtime';
 import { uniqBy } from 'es-toolkit/compat';
-import {
-  type AIImageModelCard,
-  type AIVideoModelCard,
-  type EnabledAiModel,
-  type LobeDefaultAiModelListItem,
-  type ModelAbilities,
-  type ModelParamsSchema,
-  type Pricing,
+import type {
+  AIImageModelCard,
+  AIVideoModelCard,
+  EnabledAiModel,
+  LobeDefaultAiModelListItem,
+  ModelAbilities,
+  ModelParamsSchema,
+  Pricing,
 } from 'model-bank';
 import { type SWRResponse } from 'swr';
 
@@ -52,6 +48,15 @@ export type ProviderModelListItem = {
 type ModelNormalizer = (model: EnabledAiModel) => Promise<ProviderModelListItem>;
 
 const dedupeById = (models: ProviderModelListItem[]) => uniqBy(models, 'id');
+let modelRuntimePromise: Promise<typeof ModelRuntime> | undefined;
+
+const getModelRuntime = async () => {
+  if (!modelRuntimePromise) {
+    modelRuntimePromise = import('@lobechat/model-runtime');
+  }
+
+  return modelRuntimePromise;
+};
 
 const createProviderModelCollector = (
   type: EnabledAiModel['type'],
@@ -70,6 +75,7 @@ const createProviderModelCollector = (
 };
 
 export const normalizeChatModel = async (model: EnabledAiModel): Promise<ProviderModelListItem> => {
+  const { getModelPropertyWithFallback } = await getModelRuntime();
   const [description, pricing] = await Promise.all([
     getModelPropertyWithFallback<string | undefined>(model.id, 'description', model.providerId),
     getModelPropertyWithFallback<Pricing | undefined>(model.id, 'pricing', model.providerId),
@@ -89,6 +95,7 @@ export const normalizeChatModel = async (model: EnabledAiModel): Promise<Provide
 export const normalizeImageModel = async (
   model: EnabledAiModel,
 ): Promise<ProviderModelListItem> => {
+  const { getModelPropertyWithFallback, resolveImageSinglePrice } = await getModelRuntime();
   const fallbackParametersPromise = model.parameters
     ? Promise.resolve<ModelParamsSchema | undefined>(model.parameters)
     : getModelPropertyWithFallback<ModelParamsSchema | undefined>(
@@ -136,6 +143,7 @@ export const normalizeImageModel = async (
 export const normalizeVideoModel = async (
   model: EnabledAiModel,
 ): Promise<ProviderModelListItem> => {
+  const { getModelPropertyWithFallback, resolveVideoSinglePrice } = await getModelRuntime();
   const fallbackParametersPromise = model.parameters
     ? Promise.resolve<ModelParamsSchema | undefined>(model.parameters)
     : getModelPropertyWithFallback<ModelParamsSchema | undefined>(

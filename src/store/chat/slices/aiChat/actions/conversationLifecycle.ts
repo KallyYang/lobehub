@@ -17,7 +17,7 @@ import { t } from 'i18next';
 
 import { markUserValidAction } from '@/business/client/markUserValidAction';
 import { aiChatService } from '@/services/aiChat';
-import { chatService } from '@/services/chat';
+import { getChatService } from '@/services/chat/lazy';
 import { prepareSelectedSkillPreload } from '@/services/chat/mecha/skillPreload';
 import { messageService } from '@/services/message';
 import { getAgentStoreState } from '@/store/agent';
@@ -717,6 +717,7 @@ export class ConversationLifecycleActionImpl {
       const { model, provider } = agentSelectors.getAgentConfigById(agentId)(getAgentStoreState());
       const compressionPayload = chainCompressContext(messagesToSummarize);
       let summaryContent = '';
+      const chatService = await getChatService();
 
       await chatService.fetchPresetTaskResult({
         abortController,

@@ -3,8 +3,7 @@ import { KLAVIS_SERVER_TYPES, LOBEHUB_SKILL_PROVIDERS } from '@lobechat/const';
 import { type OfficialToolItem } from '@lobechat/context-engine';
 import { type FetchSSEOptions } from '@lobechat/fetch-sse';
 import { fetchSSE, getMessageError, standardizeAnimationStyle } from '@lobechat/fetch-sse';
-import { type ChatCompletionErrorPayload } from '@lobechat/model-runtime';
-import { AgentRuntimeError } from '@lobechat/model-runtime';
+import type { ChatCompletionErrorPayload } from '@lobechat/model-runtime';
 import {
   type RuntimeInitialContext,
   type RuntimeStepContext,
@@ -15,7 +14,8 @@ import { ChatErrorType, TraceTagMap } from '@lobechat/types';
 import { type PluginRequestPayload } from '@lobehub/chat-plugin-sdk';
 import { createHeadersWithPluginSettings } from '@lobehub/chat-plugin-sdk';
 import { merge } from 'es-toolkit/compat';
-import { ModelProvider } from 'model-bank';
+import { ModelProvider } from 'model-bank/modelProvider';
+import { getProviderRuntimeConfig } from 'model-bank/providerRuntime';
 
 import { DEFAULT_AGENT_CONFIG } from '@/const/settings';
 import { getSearchConfig } from '@/helpers/getSearchConfig';
@@ -47,14 +47,19 @@ import { createTraceHeader, getTraceId } from '@/utils/trace';
 import { createHeaderWithAuth } from '../_auth';
 import { API_ENDPOINTS } from '../_url';
 import { findDeploymentName, isEnableFetchOnClient, resolveRuntimeProvider } from './helper';
-import { type ResolvedAgentConfig } from './mecha';
-import {
-  contextEngineering,
-  getTargetAgentId,
-  initializeWithClientStore,
-  resolveModelExtendParams,
-} from './mecha';
+import { type ResolvedAgentConfig } from './mecha/agentConfigResolver';
+import { getTargetAgentId } from './mecha/agentConfigResolver';
+import { contextEngineering } from './mecha/contextEngineering';
+import { resolveModelExtendParams } from './mecha/modelParamsResolver';
 import { type FetchOptions } from './types';
+
+const defaultProvider = ModelProvider.OpenAI;
+const providersWithDeploymentName = new Set([
+  ModelProvider.Azure,
+  ModelProvider.AzureAI,
+  ModelProvider.Qwen,
+  ModelProvider.Volcengine,
+]);
 
 interface GetChatCompletionPayload extends Partial<Omit<ChatStreamPayload, 'messages'>> {
   agentId?: string;
@@ -317,21 +322,14 @@ class ChatService {
   getChatCompletion = async (params: Partial<ChatStreamPayload>, options?: FetchOptions) => {
     const { agentId, signal, responseAnimation, topicId } = options ?? {};
 
-    const { provider = ModelProvider.OpenAI, ...res } = params;
+    const { provider = defaultProvider, ...res } = params;
 
     // =================== process model =================== //
     // ===================================================== //
     let model = res.model || DEFAULT_AGENT_CONFIG.model;
 
     // if the provider is Azure, get the deployment name as the request model
-    const providersWithDeploymentName = [
-      ModelProvider.Azure,
-      ModelProvider.Volcengine,
-      ModelProvider.AzureAI,
-      ModelProvider.Qwen,
-    ] as string[];
-
-    if (providersWithDeploymentName.includes(provider)) {
+    if (providersWithDeploymentName.has(provider)) {
       model = findDeploymentName(model, provider);
     }
 
@@ -413,15 +411,14 @@ class ChatService {
       provider,
     });
 
-    const { DEFAULT_MODEL_PROVIDER_LIST } = await import('model-bank/modelProviders');
-    const providerConfig = DEFAULT_MODEL_PROVIDER_LIST.find((item) => item.id === provider);
+    const providerRuntimeConfig = getProviderRuntimeConfig(provider);
 
     const userPreferTransitionMode =
       userGeneralSettingsSelectors.transitionMode(getUserStoreState());
 
     // The order of the array is very important.
     const mergedResponseAnimation = [
-      providerConfig?.settings?.responseAnimation || {},
+      providerRuntimeConfig?.responseAnimation || {},
       userPreferTransitionMode,
       responseAnimation,
     ].reduce((acc, cur) => merge(acc, standardizeAnimationStyle(cur)), {});
@@ -551,6 +548,11 @@ class ChatService {
     runtimeProvider: string;
     signal?: AbortSignal;
   }) => {
+    const [{ AgentRuntimeError }, { initializeWithClientStore }] = await Promise.all([
+      import('@lobechat/model-runtime'),
+      import('./mecha/clientModelRuntime'),
+    ]);
+
     /**
      * if enable login and not signed in, return unauthorized error
      */

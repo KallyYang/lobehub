@@ -1,4 +1,4 @@
-import { isProviderDisableBrowserRequest } from 'model-bank/modelProviders';
+import { isProviderDisableBrowserRequest } from 'model-bank/providerRuntime';
 
 import { type AIProviderStoreState } from '@/store/aiInfra/initialState';
 import { type AiProviderRuntimeConfig } from '@/types/aiProvider';

@@ -1,16 +1,27 @@
 'use client';
 
-import { lazy, memo,Suspense } from 'react';
+import { lazy, memo, Suspense, useEffect, useState } from 'react';
 
-// Lazy load the CommandMenu component with React lazy
-// This splits the CommandMenu code into a separate chunk that only loads when needed
+import { useGlobalStore } from '@/store/global';
+
 const CmdkComponent = lazy(() => import('@/features/CommandMenu'));
 
-const CmdkLazy = memo(() => (
-  <Suspense fallback={null}>
-    <CmdkComponent />
-  </Suspense>
-));
+const CmdkLazy = memo(() => {
+  const open = useGlobalStore((s) => s.status.showCommandMenu);
+  const [hasLoaded, setHasLoaded] = useState(open);
+
+  useEffect(() => {
+    if (open) setHasLoaded(true);
+  }, [open]);
+
+  if (!(hasLoaded || open)) return null;
+
+  return (
+    <Suspense fallback={null}>
+      <CmdkComponent />
+    </Suspense>
+  );
+});
 
 CmdkLazy.displayName = 'CmdkLazy';
 

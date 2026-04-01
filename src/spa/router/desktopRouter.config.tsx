@@ -6,6 +6,7 @@ import {
   BusinessDesktopRoutesWithMainLayout,
   BusinessDesktopRoutesWithoutMainLayout,
 } from '@/business/client/BusinessDesktopRoutes';
+import DesktopMainLayout from '@/routes/(main)/_layout';
 import { dynamicElement, dynamicLayout, ErrorBoundary, redirectElement } from '@/utils/router';
 
 // Desktop router configuration (declarative mode)
@@ -547,7 +548,8 @@ export const desktopRoutes: RouteObject[] = [
         path: '*',
       },
     ],
-    element: dynamicLayout(() => import('@/routes/(main)/_layout'), 'Desktop > Main > Layout'),
+    // Keep the persistent home shell inside the root bundle for `/` to avoid an extra lazy chunk on first paint.
+    element: <DesktopMainLayout />,
     errorElement: <ErrorBoundary resetPath="/" />,
     path: '/',
   },

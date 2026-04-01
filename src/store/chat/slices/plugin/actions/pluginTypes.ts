@@ -5,7 +5,7 @@ import { t } from 'i18next';
 
 import { type MCPToolCallResult } from '@/libs/mcp';
 import { truncateToolResult } from '@/server/utils/truncateToolResult';
-import { chatService } from '@/services/chat';
+import { getChatService } from '@/services/chat/lazy';
 import { mcpService } from '@/services/mcp';
 import { messageService } from '@/services/message';
 import { AI_RUNTIME_OPERATION_TYPES } from '@/store/chat/slices/operation';
@@ -427,6 +427,7 @@ export class PluginTypesActionImpl {
     );
 
     try {
+      const chatService = await getChatService();
       const res = await chatService.runPluginApi(payload, {
         signal: abortController?.signal,
         trace: { observationId: message?.observationId, traceId: message?.traceId },

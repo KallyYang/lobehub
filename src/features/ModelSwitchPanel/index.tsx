@@ -7,11 +7,16 @@ import {
   stopPropagation,
   TooltipGroup,
 } from '@lobehub/ui';
-import { memo, useCallback, useState } from 'react';
+import { lazy, memo, Suspense, useCallback, useState } from 'react';
 
-import { PanelContent } from './components/PanelContent';
 import { styles } from './styles';
 import { type ModelSwitchPanelProps } from './types';
+
+const LazyPanelContent = lazy(async () => {
+  const panelModule = await import('./components/PanelContent');
+
+  return { default: panelModule.PanelContent };
+});
 
 const ModelSwitchPanel = memo<ModelSwitchPanelProps>(
   ({
@@ -47,15 +52,19 @@ const ModelSwitchPanel = memo<ModelSwitchPanelProps>(
           <DropdownMenuPortal>
             <DropdownMenuPositioner hoverTrigger={openOnHover} placement={placement}>
               <DropdownMenuPopup className={styles.container} onKeyDown={stopPropagation}>
-                <PanelContent
-                  ModelItemComponent={ModelItemComponent}
-                  enabledList={enabledList}
-                  model={modelProp}
-                  pricingMode={pricingMode}
-                  provider={providerProp}
-                  onModelChange={onModelChange}
-                  onOpenChange={handleOpenChange}
-                />
+                {isOpen ? (
+                  <Suspense fallback={<div style={{ minHeight: 360, width: 320 }} />}>
+                    <LazyPanelContent
+                      ModelItemComponent={ModelItemComponent}
+                      enabledList={enabledList}
+                      model={modelProp}
+                      pricingMode={pricingMode}
+                      provider={providerProp}
+                      onModelChange={onModelChange}
+                      onOpenChange={handleOpenChange}
+                    />
+                  </Suspense>
+                ) : null}
               </DropdownMenuPopup>
             </DropdownMenuPositioner>
           </DropdownMenuPortal>

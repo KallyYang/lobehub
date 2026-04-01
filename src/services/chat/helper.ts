@@ -1,4 +1,5 @@
-import { ModelProvider } from 'model-bank';
+import { isBuiltinModelProvider } from 'model-bank/modelProvider';
+import { getProviderRuntimeConfig } from 'model-bank/providerRuntime';
 
 import { getAiInfraStoreState } from '@/store/aiInfra';
 import { aiModelSelectors, aiProviderSelectors } from '@/store/aiInfra/selectors';
@@ -34,10 +35,13 @@ export const isEnableFetchOnClient = (provider: string) => {
 };
 
 export const resolveRuntimeProvider = (provider: string) => {
-  const isBuiltin = Object.values(ModelProvider).includes(provider as any);
-  if (isBuiltin) return provider;
-
   const providerConfig = aiProviderSelectors.providerConfigById(provider)(getAiInfraStoreState());
+  const modelBankRuntimeProvider = getProviderRuntimeConfig(provider)?.sdkType;
+  const runtimeProvider = providerConfig?.settings.sdkType || modelBankRuntimeProvider;
 
-  return providerConfig?.settings.sdkType || 'openai';
+  if (isBuiltinModelProvider(provider)) {
+    return runtimeProvider || provider;
+  }
+
+  return runtimeProvider || 'openai';
 };

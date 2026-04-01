@@ -10,7 +10,7 @@ import { Outlet } from 'react-router-dom';
 
 import Loading from '@/components/Loading/BrandTextLoading';
 import { isDesktop } from '@/const/version';
-import { BANNER_HEIGHT } from '@/features/AlertBanner/CloudBanner';
+import { BANNER_HEIGHT } from '@/features/AlertBanner/constants';
 import DesktopFileMenuBridge from '@/features/DesktopFileMenuBridge';
 import DesktopNavigationBridge from '@/features/DesktopNavigationBridge';
 import AuthRequiredModal from '@/features/Electron/AuthRequiredModal';

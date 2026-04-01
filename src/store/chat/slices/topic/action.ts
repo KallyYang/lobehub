@@ -11,7 +11,7 @@ import useSWR from 'swr';
 import { message } from '@/components/AntdStaticMethods';
 import { LOADING_FLAT } from '@/const/message';
 import { mutate, useClientDataSWRWithSync } from '@/libs/swr';
-import { chatService } from '@/services/chat';
+import { getChatService } from '@/services/chat/lazy';
 import { messageService } from '@/services/message';
 import { topicService } from '@/services/topic';
 import { type ChatStore } from '@/store/chat';
@@ -199,6 +199,7 @@ export class ChatTopicActionImpl {
 
     // Get current agent for topic
     const topicConfig = systemAgentSelectors.topic(useUserStore.getState());
+    const chatService = await getChatService();
 
     // Automatically summarize the topic title
     await chatService.fetchPresetTaskResult({

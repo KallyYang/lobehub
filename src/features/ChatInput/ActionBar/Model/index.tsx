@@ -4,11 +4,10 @@ import { Center, Flexbox } from '@lobehub/ui';
 import { Spin } from 'antd';
 import { createStaticStyles, cx } from 'antd-style';
 import { Settings2Icon } from 'lucide-react';
-import { memo, Suspense, useCallback } from 'react';
+import { lazy, memo, Suspense, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import ModelSwitchPanel from '@/features/ModelSwitchPanel';
-import ModelDetailPanel from '@/features/ModelSwitchPanel/components/ModelDetailPanel';
 import { useAgentStore } from '@/store/agent';
 import { agentByIdSelectors } from '@/store/agent/selectors';
 import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
@@ -18,6 +17,10 @@ import { userGeneralSettingsSelectors } from '@/store/user/selectors';
 import { useAgentId } from '../../hooks/useAgentId';
 import Action from '../components/Action';
 import { useActionBarContext } from '../context';
+
+const LazyModelDetailPanel = lazy(
+  () => import('@/features/ModelSwitchPanel/components/ModelDetailPanel'),
+);
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
   container: css`
@@ -116,7 +119,7 @@ const ModelSwitch = memo(() => {
                   </Flexbox>
                 }
               >
-                <ModelDetailPanel model={model} provider={provider} />
+                <LazyModelDetailPanel model={model} provider={provider} />
               </Suspense>
             ),
             maxWidth: 400,

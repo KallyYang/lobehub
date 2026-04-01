@@ -38,7 +38,7 @@ import pMap from 'p-map';
 
 import { LOADING_FLAT } from '@/const/message';
 import { aiAgentService } from '@/services/aiAgent';
-import { chatService } from '@/services/chat';
+import { getChatService } from '@/services/chat/lazy';
 import { type ResolvedAgentConfig } from '@/services/chat/mecha';
 import { messageService } from '@/services/message';
 import { agentByIdSelectors } from '@/store/agent/selectors';
@@ -456,6 +456,7 @@ export const createAgentExecutors = (context: {
         }
       }
 
+      const chatService = await getChatService();
       await chatService.createAssistantMessageStream({
         abortController,
         params: {
@@ -2723,6 +2724,7 @@ export const createAgentExecutors = (context: {
         // 4. Build compression prompt and generate summary with streaming UI updates
         const compressionPayload = chainCompressContext(messagesToSummarize);
         let summaryContent = '';
+        const chatService = await getChatService();
 
         // Start generateSummary operation attached to the compressed group message
         const { abortController: summaryAbortController, operationId: summaryOperationId } = context

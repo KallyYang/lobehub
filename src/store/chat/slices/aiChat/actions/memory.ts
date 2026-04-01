@@ -2,7 +2,7 @@ import { chainSummaryHistory } from '@lobechat/prompts';
 import { type UIChatMessage } from '@lobechat/types';
 import { TraceNameMap } from '@lobechat/types';
 
-import { chatService } from '@/services/chat';
+import { getChatService } from '@/services/chat/lazy';
 import { topicService } from '@/services/topic';
 import { type ChatStore } from '@/store/chat';
 import { type StoreSetter } from '@/store/types';
@@ -29,6 +29,7 @@ export class ChatMemoryActionImpl {
     const { model, provider } = systemAgentSelectors.historyCompress(useUserStore.getState());
 
     let historySummary = '';
+    const chatService = await getChatService();
     await chatService.fetchPresetTaskResult({
       onFinish: async (text) => {
         historySummary = text;

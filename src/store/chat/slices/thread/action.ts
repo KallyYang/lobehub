@@ -11,7 +11,7 @@ import isEqual from 'fast-deep-equal';
 import { type SWRResponse } from 'swr';
 
 import { mutate, useClientDataSWR } from '@/libs/swr';
-import { chatService } from '@/services/chat';
+import { getChatService } from '@/services/chat/lazy';
 import { threadService } from '@/services/thread';
 import { threadSelectors } from '@/store/chat/selectors';
 import { type ChatStore } from '@/store/chat/store';
@@ -181,6 +181,7 @@ export class ChatThreadActionImpl {
 
     let output = '';
     const threadConfig = systemAgentSelectors.thread(useUserStore.getState());
+    const chatService = await getChatService();
 
     await chatService.fetchPresetTaskResult({
       onError: () => {

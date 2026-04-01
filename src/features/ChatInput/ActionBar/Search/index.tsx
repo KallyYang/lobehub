@@ -1,7 +1,7 @@
 import { GlobeOffIcon } from '@lobehub/ui/icons';
 import { cssVar } from 'antd-style';
 import { Globe } from 'lucide-react';
-import { memo } from 'react';
+import { lazy, memo, Suspense, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useIsMobile } from '@/hooks/useIsMobile';
@@ -12,7 +12,8 @@ import { useAgentEnableSearch } from '../../hooks/useAgentEnableSearch';
 import { useAgentId } from '../../hooks/useAgentId';
 import { useUpdateAgentConfig } from '../../hooks/useUpdateAgentConfig';
 import Action from '../components/Action';
-import Controls from './Controls';
+
+const LazyControls = lazy(() => import('./Controls'));
 
 const Search = memo(() => {
   const { t } = useTranslation('chat');
@@ -24,6 +25,7 @@ const Search = memo(() => {
   ]);
   const isAgentEnableSearch = useAgentEnableSearch();
   const isMobile = useIsMobile();
+  const [hasOpened, setHasOpened] = useState(false);
 
   if (isLoading) return <Action disabled icon={GlobeOffIcon} />;
 
@@ -34,7 +36,11 @@ const Search = memo(() => {
       showTooltip={false}
       title={t('search.title')}
       popover={{
-        content: <Controls />,
+        content: hasOpened ? (
+          <Suspense fallback={null}>
+            <LazyControls />
+          </Suspense>
+        ) : null,
         maxWidth: 320,
         minWidth: 320,
         placement: 'topLeft',
@@ -55,6 +61,9 @@ const Search = memo(() => {
               await updateAgentChatConfig({ searchMode: next });
             }
       }
+      onOpenChange={(open) => {
+        if (open) setHasOpened(true);
+      }}
     />
   );
 });

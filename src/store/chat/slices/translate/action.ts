@@ -4,7 +4,7 @@ import { TraceNameMap } from '@lobechat/types';
 import { merge } from '@lobechat/utils';
 
 import { supportLocales } from '@/locales/resources';
-import { chatService } from '@/services/chat';
+import { getChatService } from '@/services/chat/lazy';
 import { messageService } from '@/services/message';
 import { dbMessageSelectors } from '@/store/chat/selectors';
 import { type ChatStore } from '@/store/chat/store';
@@ -71,6 +71,7 @@ export class ChatTranslateActionImpl {
     try {
       let content = '';
       let from = '';
+      const chatService = await getChatService();
 
       // detect from language
       chatService.fetchPresetTaskResult({

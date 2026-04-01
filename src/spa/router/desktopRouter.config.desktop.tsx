@@ -436,6 +436,7 @@ export const desktopRoutes: RouteObject[] = [
         path: '*',
       },
     ],
+    // Keep the persistent home shell inside the root bundle for `/` to avoid an extra lazy chunk on first paint.
     element: <DesktopMainLayout />,
     errorElement: <ErrorBoundary resetPath="/" />,
     path: '/',
