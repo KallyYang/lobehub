@@ -91,9 +91,11 @@ export const transformResponseToStream = (data: OpenAI.ChatCompletion) =>
 export const transformResponseAPIToStream = (data: OpenAI.Responses.Response) =>
   new ReadableStream({
     start(controller) {
+      let toolIndex = 0;
+
       // Check if output exists and is an array
       if (data.output && Array.isArray(data.output)) {
-        data.output.forEach((output) => {
+        data.output.forEach((output, outputIndex) => {
           switch (output.type) {
             case 'message': {
               // Check if content exists and is an array
@@ -113,6 +115,46 @@ export const transformResponseAPIToStream = (data: OpenAI.Responses.Response) =>
                   }
                 });
               }
+              break;
+            }
+
+            case 'function_call': {
+              const fnOutput = output as any;
+
+              // Emit output_item.added so the stream handler sets up tool context
+              controller.enqueue({
+                item: {
+                  call_id: fnOutput.call_id,
+                  name: fnOutput.name,
+                  type: 'function_call',
+                },
+                output_index: outputIndex,
+                type: 'response.output_item.added',
+              });
+
+              // Emit the full arguments as a single delta
+              if (fnOutput.arguments) {
+                controller.enqueue({
+                  delta: fnOutput.arguments,
+                  item_id: fnOutput.id,
+                  output_index: outputIndex,
+                  type: 'response.function_call_arguments.delta',
+                });
+              }
+
+              // Emit done event for this function call
+              controller.enqueue({
+                item: {
+                  arguments: fnOutput.arguments || '',
+                  call_id: fnOutput.call_id,
+                  name: fnOutput.name,
+                  type: 'function_call',
+                },
+                output_index: outputIndex,
+                type: 'response.output_item.done',
+              });
+
+              toolIndex++;
               break;
             }
           }
