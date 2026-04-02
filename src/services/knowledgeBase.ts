@@ -18,7 +18,7 @@ class KnowledgeBaseService {
     return lambdaClient.knowledgeBase.updateKnowledgeBase.mutate({ id, value });
   };
 
-  deleteKnowledgeBase = async (id: string, removeFiles: boolean = true) => {
+  deleteKnowledgeBase = async (id: string, removeFiles: boolean = false) => {
     return lambdaClient.knowledgeBase.removeKnowledgeBase.mutate({ id, removeFiles });
   };
 
