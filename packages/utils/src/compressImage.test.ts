@@ -139,6 +139,27 @@ describe('compressImageFile', () => {
     global.Image = originalImage;
   });
 
+  it('should preserve JPEG type when compressing', async () => {
+    const file = createMockFile('photo.jpg', 'image/jpeg', 1000);
+
+    const originalImage = global.Image;
+    global.Image = class MockImage extends originalImage {
+      constructor() {
+        super();
+        Object.defineProperty(this, 'width', { value: 3000, writable: false });
+        Object.defineProperty(this, 'height', { value: 2000, writable: false });
+        setTimeout(() => this.dispatchEvent(new Event('load')), 0);
+      }
+    } as any;
+
+    const result = await compressImageFile(file);
+
+    expect(result).not.toBe(file);
+    expect(result.type).toBe('image/jpeg');
+    expect(result.name).toBe('photo.jpg');
+    global.Image = originalImage;
+  });
+
   it('should compress images exceeding max file size even if dimensions are small', async () => {
     const file = createMockFile('heavy.png', 'image/png', 6 * 1024 * 1024);
 

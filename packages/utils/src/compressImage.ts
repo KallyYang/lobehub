@@ -39,10 +39,13 @@ const compressImage = ({
 export default compressImage;
 
 const dataUrlToFile = (dataUrl: string, name: string): File => {
-  const binary = atob(dataUrl.split(',')[1]);
+  const [header, base64] = dataUrl.split(',');
+  const mimeMatch = header.match(/data:([^;]+)/);
+  const mimeType = mimeMatch?.[1] || 'image/png';
+  const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new File([bytes], name, { type: 'image/png' });
+  return new File([bytes], name, { type: mimeType });
 };
 
 export const compressImageFile = (file: File): Promise<File> =>
@@ -67,7 +70,7 @@ export const compressImageFile = (file: File): Promise<File> =>
       let maxSize = MAX_IMAGE_SIZE;
       let result: File;
       do {
-        const dataUrl = compressImage({ img, maxSize });
+        const dataUrl = compressImage({ img, maxSize, type: file.type });
         result = dataUrlToFile(dataUrl, file.name);
         maxSize = Math.round(maxSize * 0.8);
       } while (result.size > MAX_IMAGE_BYTES && maxSize > 100);
