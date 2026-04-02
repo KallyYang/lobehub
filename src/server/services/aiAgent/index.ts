@@ -187,6 +187,7 @@ export class AiAgentService {
   private readonly threadModel: ThreadModel;
   private readonly topicModel: TopicModel;
   private readonly agentRuntimeService: AgentRuntimeService;
+  private readonly fileService: FileService;
   private readonly marketService: MarketService;
   private readonly klavisService: KlavisService;
 
@@ -200,9 +201,9 @@ export class AiAgentService {
     this.agentDocumentsService = new AgentDocumentsService(db, userId);
     this.agentModel = new AgentModel(db, userId);
     this.agentService = new AgentService(db, userId);
-    const fileService = new FileService(db, userId);
+    this.fileService = new FileService(db, userId);
     this.messageModel = new MessageModel(db, userId, {
-      postProcessUrl: (path) => fileService.getFullFileUrl(path),
+      postProcessUrl: (path) => this.fileService.getFullFileUrl(path),
     });
     this.pluginModel = new PluginModel(db, userId);
     this.threadModel = new ThreadModel(db, userId);
@@ -798,7 +799,7 @@ export class AiAgentService {
         await throwIfExecutionAborted('file upload');
 
         try {
-          const result = await ingestAttachment(file, fileService, this.userId);
+          const result = await ingestAttachment(file, this.fileService, this.userId);
           fileIds.push(result.fileId);
 
           if (result.isImage) {
