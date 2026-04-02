@@ -8,6 +8,12 @@ vi.mock('@/envs/app', () => ({ appEnv: { APP_URL: 'http://localhost:3010' } }));
 vi.mock('@/database/models/message', () => ({
   MessageModel: vi.fn().mockImplementation(() => ({})),
 }));
+// Mock FileService to avoid S3 dependency
+vi.mock('@/server/services/file', () => ({
+  FileService: vi.fn().mockImplementation(() => ({
+    getFullFileUrl: vi.fn((path: string | null) => path),
+  })),
+}));
 vi.mock('@/server/modules/AgentRuntime', () => ({
   AgentRuntimeCoordinator: vi.fn().mockImplementation(() => ({
     loadAgentState: vi.fn(),

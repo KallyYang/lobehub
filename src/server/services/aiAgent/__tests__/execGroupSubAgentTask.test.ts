@@ -48,6 +48,13 @@ vi.mock('@/database/models/topic', () => ({
   })),
 }));
 
+// Mock FileService to avoid S3 dependency
+vi.mock('@/server/services/file', () => ({
+  FileService: vi.fn().mockImplementation(() => ({
+    getFullFileUrl: vi.fn((path: string | null) => path),
+  })),
+}));
+
 // Mock AgentService
 vi.mock('@/server/services/agent', () => ({
   AgentService: vi.fn().mockImplementation(() => ({
