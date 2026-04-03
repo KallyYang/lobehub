@@ -87,21 +87,13 @@ describe('contextEngineering', () => {
     });
 
     expect(agentDocumentService.getDocuments).not.toHaveBeenCalled();
-    const documentsMessage = output.find(
-      (message) =>
-        message.role === 'system' &&
-        typeof message.content === 'string' &&
-        message.content.includes('<documents>'),
-    );
 
-    expect(documentsMessage).toEqual({
-      content: expect.stringContaining('<documents>'),
-      role: 'system',
-    });
-    expect(documentsMessage).toEqual({
-      content: expect.stringContaining('setup.md'),
-      role: 'system',
-    });
+    // Agent documents are injected via AgentDocumentContextInjector as a user-role
+    // message before the first user message (BaseFirstUserContentProvider pattern)
+    const hasDocumentContent = output.some(
+      (msg) => typeof msg.content === 'string' && msg.content.includes('Project setup steps'),
+    );
+    expect(hasDocumentContent).toBe(true);
   });
 
   describe('handle with files content in server mode', () => {
