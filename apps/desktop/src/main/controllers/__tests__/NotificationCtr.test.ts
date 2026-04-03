@@ -5,8 +5,14 @@ import type { App } from '@/core/App';
 
 import NotificationCtr from '../NotificationCtr';
 
-const { ipcMainHandleMock } = vi.hoisted(() => ({
+const { ipcMainHandleMock, mockNotificationInstance, notificationCtorSpy } = vi.hoisted(() => ({
   ipcMainHandleMock: vi.fn(),
+  mockNotificationInstance: {
+    close: vi.fn(),
+    on: vi.fn(),
+    show: vi.fn(),
+  },
+  notificationCtorSpy: vi.fn(),
 }));
 
 // Mock logger
@@ -21,26 +27,30 @@ vi.mock('@/utils/logger', () => ({
 
 // Mock electron
 vi.mock('electron', () => {
-  const mockNotificationInstance = {
-    on: vi.fn(),
-    show: vi.fn(),
-  };
-  const MockNotification = vi.fn(() => mockNotificationInstance) as any;
-  MockNotification.isSupported = vi.fn(() => true);
+  class MockNotification {
+    close = mockNotificationInstance.close;
+    on = mockNotificationInstance.on;
+    show = mockNotificationInstance.show;
+    static isSupported = vi.fn(() => true);
+    constructor(opts?: any) {
+      notificationCtorSpy(opts);
+    }
+  }
 
   return {
-    ipcMain: {
-      handle: ipcMainHandleMock,
-    },
     Notification: MockNotification,
     app: {
       setAppUserModelId: vi.fn(),
+    },
+    ipcMain: {
+      handle: ipcMainHandleMock,
     },
   };
 });
 
 // Mock electron-is
 vi.mock('electron-is', () => ({
+  linux: vi.fn(() => false),
   macOS: vi.fn(() => false),
   windows: vi.fn(() => false),
 }));
@@ -169,7 +179,7 @@ describe('NotificationCtr', () => {
       vi.advanceTimersByTime(100);
       const result = await promise;
 
-      expect(Notification).toHaveBeenCalledWith({
+      expect(notificationCtorSpy).toHaveBeenCalledWith({
         body: 'Test body',
         hasReply: false,
         silent: false,
@@ -191,7 +201,7 @@ describe('NotificationCtr', () => {
       vi.advanceTimersByTime(100);
       const result = await promise;
 
-      expect(Notification).toHaveBeenCalled();
+      expect(notificationCtorSpy).toHaveBeenCalled();
       expect(result).toEqual({ success: true });
     });
 
@@ -206,7 +216,7 @@ describe('NotificationCtr', () => {
       vi.advanceTimersByTime(100);
       const result = await promise;
 
-      expect(Notification).toHaveBeenCalled();
+      expect(notificationCtorSpy).toHaveBeenCalled();
       expect(result).toEqual({ success: true });
     });
 
@@ -224,7 +234,7 @@ describe('NotificationCtr', () => {
       vi.advanceTimersByTime(100);
       await promise;
 
-      expect(Notification).toHaveBeenCalledWith(
+      expect(notificationCtorSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           silent: true,
         }),
@@ -236,16 +246,14 @@ describe('NotificationCtr', () => {
       vi.mocked(Notification.isSupported).mockReturnValue(true);
       mockBrowserWindow.isVisible.mockReturnValue(false);
 
-      // Get the mock instance that will be created
-      const mockInstance = { on: vi.fn(), show: vi.fn() };
-      vi.mocked(Notification).mockReturnValue(mockInstance as any);
-
       const promise = controller.showDesktopNotification(params);
       vi.advanceTimersByTime(100);
       await promise;
 
-      // Find the click handler
-      const clickHandler = mockInstance.on.mock.calls.find((call) => call[0] === 'click')?.[1];
+      // Find the click handler from the shared mock
+      const clickHandler = mockNotificationInstance.on.mock.calls.find(
+        (call) => call[0] === 'click',
+      )?.[1];
 
       expect(clickHandler).toBeDefined();
 
@@ -260,7 +268,7 @@ describe('NotificationCtr', () => {
       const { Notification } = await import('electron');
       vi.mocked(Notification.isSupported).mockReturnValue(true);
       mockBrowserWindow.isVisible.mockReturnValue(false);
-      vi.mocked(Notification).mockImplementationOnce(() => {
+      notificationCtorSpy.mockImplementationOnce(() => {
         throw new Error('Notification error');
       });
 
@@ -272,11 +280,50 @@ describe('NotificationCtr', () => {
       });
     });
 
+    it('should use low urgency and non-blocking dispatch on Linux', async () => {
+      const { Notification } = await import('electron');
+      const electronIs = await import('electron-is');
+      vi.mocked(Notification.isSupported).mockReturnValue(true);
+      vi.mocked(electronIs.linux).mockReturnValue(true);
+      mockBrowserWindow.isVisible.mockReturnValue(false);
+
+      // On Linux the method should resolve immediately without needing timer advancement
+      const result = await controller.showDesktopNotification(params);
+
+      expect(notificationCtorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          timeoutType: 'never',
+          urgency: 'low',
+        }),
+      );
+      expect(result).toEqual({ success: true });
+
+      vi.mocked(electronIs.linux).mockReturnValue(false);
+    });
+
+    it('should close previous notification before showing a new one', async () => {
+      const { Notification } = await import('electron');
+      vi.mocked(Notification.isSupported).mockReturnValue(true);
+      mockBrowserWindow.isVisible.mockReturnValue(false);
+
+      // Show first notification
+      const p1 = controller.showDesktopNotification(params);
+      vi.advanceTimersByTime(100);
+      await p1;
+
+      // Show second notification – should close the first
+      const p2 = controller.showDesktopNotification(params);
+      vi.advanceTimersByTime(100);
+      await p2;
+
+      expect(mockNotificationInstance.close).toHaveBeenCalled();
+    });
+
     it('should handle unknown error type', async () => {
       const { Notification } = await import('electron');
       vi.mocked(Notification.isSupported).mockReturnValue(true);
       mockBrowserWindow.isVisible.mockReturnValue(false);
-      vi.mocked(Notification).mockImplementationOnce(() => {
+      notificationCtorSpy.mockImplementationOnce(() => {
         throw 'string error';
       });
 

@@ -3,7 +3,7 @@ import type {
   ShowDesktopNotificationParams,
 } from '@lobechat/electron-client-ipc';
 import { app, Notification } from 'electron';
-import { macOS, windows } from 'electron-is';
+import { linux, macOS, windows } from 'electron-is';
 
 import { getIpcContext } from '@/utils/ipc';
 import { createLogger } from '@/utils/logger';
@@ -14,6 +14,14 @@ const logger = createLogger('controllers:NotificationCtr');
 
 export default class NotificationCtr extends ControllerModule {
   static override readonly groupName = 'notification';
+
+  /**
+   * Track active notifications so we can clean up properly.
+   * On Linux/GNOME, lingering Notification objects can cause the rendering
+   * thread to block when the user dismisses them, so we proactively close
+   * the previous notification before creating a new one.
+   */
+  private activeNotification: Electron.Notification | null = null;
 
   @IpcMethod()
   async getNotificationPermissionStatus(): Promise<string> {
@@ -93,11 +101,35 @@ export default class NotificationCtr extends ControllerModule {
         logger.debug('Set Windows App User Model ID for notifications');
       }
 
+      if (linux()) {
+        logger.debug(
+          'Linux detected – notifications will use low urgency and non-blocking dispatch ' +
+            'to work around GNOME Shell D-Bus freeze issues',
+        );
+      }
+
       logger.info('Desktop notifications setup completed');
     } catch (error) {
       logger.error('Failed to setup desktop notifications:', error);
     }
   }
+  /**
+   * Close and dereference the active notification to prevent resource leaks.
+   * On Linux/GNOME this is critical: lingering Notification handles can cause
+   * the rendering thread to block when the desktop environment tries to
+   * dismiss them.
+   */
+  private cleanupActiveNotification() {
+    if (this.activeNotification) {
+      try {
+        this.activeNotification.close();
+      } catch {
+        // Notification may already be closed / GC'd – safe to ignore.
+      }
+      this.activeNotification = null;
+    }
+  }
+
   /**
    * Show system desktop notification (only when window is hidden)
    */
@@ -122,19 +154,29 @@ export default class NotificationCtr extends ControllerModule {
         return { reason: 'Window is visible', skipped: true, success: true };
       }
 
+      // Close previous notification before creating a new one to avoid
+      // resource accumulation (especially important on Linux/GNOME).
+      this.cleanupActiveNotification();
+
       logger.info('Window is hidden, showing desktop notification:', params.title);
+
+      const isLinux = linux();
 
       const notification = new Notification({
         body: params.body,
-        // Add more configuration to ensure notifications display properly
         hasReply: false,
         silent: params.silent || false,
-        timeoutType: 'default',
         title: params.title,
-        urgency: 'normal',
+        // On Linux/GNOME, use 'never' so Electron does not keep an internal
+        // timer that races with the desktop-environment's own dismiss logic.
+        // This avoids the freeze reported when the two conflict.
+        timeoutType: isLinux ? 'never' : 'default',
+        // Low urgency on Linux tells the notification daemon it is safe to
+        // expire/collapse the bubble quickly, reducing the chance of D-Bus
+        // round-trip blocking the main process.
+        urgency: isLinux ? 'low' : 'normal',
       });
 
-      // Add more event listeners for debugging
       notification.on('show', () => {
         logger.info('Notification shown');
       });
@@ -144,21 +186,33 @@ export default class NotificationCtr extends ControllerModule {
         const mainWindow = this.app.browserManager.getMainWindow();
         mainWindow.show();
         mainWindow.browserWindow.focus();
+        this.cleanupActiveNotification();
       });
 
       notification.on('close', () => {
         logger.debug('Notification closed');
+        // Dereference immediately so the next notification starts clean.
+        this.activeNotification = null;
       });
 
       notification.on('failed', (error) => {
         logger.error('Notification display failed:', error);
+        this.activeNotification = null;
       });
 
-      // Use Promise to ensure notification is shown
-      return new Promise((resolve) => {
-        notification.show();
+      this.activeNotification = notification;
+      notification.show();
 
-        // Give the notification some time to display, then check the result
+      // On Linux we return immediately – do NOT block the IPC response on a
+      // setTimeout, because Electron's notification codepath on Linux goes
+      // through D-Bus which can stall under GNOME Shell.
+      if (isLinux) {
+        logger.info('Linux: notification dispatched (non-blocking)');
+        return { success: true };
+      }
+
+      // On other platforms keep the original 100ms grace period.
+      return new Promise((resolve) => {
         setTimeout(() => {
           logger.info('Notification display call completed');
           resolve({ success: true });
