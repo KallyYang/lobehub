@@ -237,8 +237,8 @@ const shouldIncludeThoughts = (
   if (typeof resolvedBudget === 'number') return resolvedBudget !== 0 ? true : undefined;
 
   // 3. Budget is undefined (Gemini 3 default / "other" category) →
-  //    only thinkingLevel can activate thinking without a numeric budget
-  return thinkingLevel ? true : undefined;
+  //    thinkingLevel or inherently thinking-enabled model → include thoughts
+  return thinkingLevel || isThinkingEnabledModel(model) ? true : undefined;
 };
 
 /**

@@ -532,7 +532,7 @@ describe('thinkingConfig includeThoughts logic', () => {
     expect(config.thinkingConfig?.includeThoughts).toBe(true);
   });
 
-  it('should let API decide thinking for gemini-3-pro-image models without explicit params', async () => {
+  it('should enable includeThoughts for thinking-enabled gemini-3-pro-image models by default', async () => {
     const mockStreamData = (async function* (): AsyncGenerator<GenerateContentResponse> {})();
     vi.spyOn(instance['client'].models, 'generateContentStream').mockResolvedValue(mockStreamData);
 
@@ -544,8 +544,8 @@ describe('thinkingConfig includeThoughts logic', () => {
 
     const callArgs = (instance['client'].models.generateContentStream as any).mock.calls[0];
     const config = callArgs[0].config;
-    // Gemini 3 models without explicit thinkingLevel/thinkingBudget → let API decide
-    expect(config.thinkingConfig?.includeThoughts).toBeUndefined();
+    // Thinking-enabled models need includeThoughts: true to return thinking content
+    expect(config.thinkingConfig?.includeThoughts).toBe(true);
   });
 
   it('should enable thinking for thinking-enabled models', async () => {
