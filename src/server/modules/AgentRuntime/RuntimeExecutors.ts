@@ -465,9 +465,31 @@ export const createRuntimeExecutors = (
           }
         }
 
+        // Build additional placeholder variables for the lobehub builtin skill
+        // (`packages/builtin-skills/src/lobehub/content.ts`) so it can render
+        // `{{agent_id}}` / `{{topic_id}}` etc. into the model's prompt without
+        // needing a separate context injector.
+        //
+        // TODO: agent_title / agent_description / topic_title are populated
+        // on the client path but not here — they would require extra DB queries
+        // (agent table for meta, topic table for title). For now they fall
+        // back to empty strings so the template still renders cleanly. If
+        // identity richness on server-driven runs becomes important, plumb
+        // these through `ctx.agentConfig` or load them in a single query.
+        const lobehubSkillVariables: Record<string, string> = {
+          agent_id: state.metadata?.agentId ?? '',
+          agent_title: '',
+          agent_description: '',
+          topic_id: state.metadata?.topicId ?? '',
+          topic_title: '',
+        };
+
         const contextEngineInput = {
           agentDocuments,
-          additionalVariables: state.metadata?.deviceSystemInfo,
+          additionalVariables: {
+            ...state.metadata?.deviceSystemInfo,
+            ...lobehubSkillVariables,
+          },
           userTimezone: ctx.userTimezone,
           capabilities: {
             isCanUseFC: (m: string, p: string) => {

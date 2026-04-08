@@ -10,7 +10,6 @@ import type {
   AgentBuilderContext,
   AgentContextDocument,
   AgentGroupConfig,
-  AgentIdentityContext,
   AgentManagementContext,
   GroupAgentBuilderContext,
   GroupOfficialToolItem,
@@ -51,7 +50,6 @@ import {
 } from '@/store/tool/selectors';
 
 import { isCanUseVideo, isCanUseVision } from '../helper';
-import { isLobeHubSkillActive } from './lobeHubSkillActivation';
 import { combineUserMemoryData, resolveTopicMemories, resolveUserPersona } from './memoryManager';
 import { resolveClientSkills } from './skillEngineering';
 
@@ -559,43 +557,6 @@ export const contextEngineering = async ({
     log('mentionedAgents injected: %d agents', initialContext!.mentionedAgents!.length);
   }
 
-  // Build agent identity context when the LobeHub builtin skill is active for
-  // this request. The skill exposes the `lh` CLI which operates on platform
-  // resources (agents/topics/files/etc), so the model needs to know its own id
-  // and current topic up front instead of having to search for itself.
-  //
-  // "Active" covers three independent activation paths — see isLobeHubSkillActive
-  // docstring for the full breakdown:
-  //   1. plugins (persisted in agent config)
-  //   2. initialContext.selectedSkills (slash-menu selected)
-  //   3. stepContext.activatedSkills (model-driven mid-step activation)
-  let agentIdentityContext: AgentIdentityContext | undefined;
-  const isLobeHubActive = isLobeHubSkillActive({
-    activatedSkills: stepContext?.activatedSkills,
-    plugins,
-    selectedSkills: initialContext?.selectedSkills,
-  });
-
-  if (isLobeHubActive && agentId) {
-    const agentMeta = agentSelectors.getAgentMetaById(agentId)(agentStoreState);
-    const agentConfig = agentSelectors.getAgentConfigById(agentId)(agentStoreState);
-    const topic = topicId ? topicSelectors.getTopicById(topicId)(getChatStoreState()) : undefined;
-
-    // NOTE: deliberately NOT including systemRole here — it's already injected
-    // as the system message by SystemRoleInjector (Phase 2 in MessagesEngine).
-    agentIdentityContext = {
-      agent: {
-        description: agentMeta?.description ?? undefined,
-        id: agentId,
-        model: agentConfig?.model,
-        provider: agentConfig?.provider,
-        title: agentMeta?.title ?? undefined,
-      },
-      topic: topic ? { id: topic.id, title: topic.title ?? undefined } : undefined,
-    };
-    log('agentIdentityContext built for agent: %s, topic: %s', agentId, topicId ?? 'none');
-  }
-
   // Resolve topic references from messages containing <refer_topic> tags
   const topicReferences = await resolveTopicReferences(
     messages,
@@ -718,11 +679,28 @@ export const contextEngineering = async ({
       CREDS_LIST: () => (credsList ? generateCredsList(credsList) : ''),
       // NOTICE(@nekomeowww): required by builtin-tool-memory/src/systemRole.ts
       memory_effort: () => (userMemoryConfig ? (memoryContext?.effort ?? '') : ''),
+      // Current agent + topic identity — referenced by the LobeHub builtin
+      // skill (packages/builtin-skills/src/lobehub/content.ts) so the model
+      // can run `lh agent run -a {{agent_id}}` etc without first having to
+      // search for itself. Read lazily from stores so we only pay the cost
+      // when the placeholder actually appears in a rendered message.
+      agent_id: () => agentId ?? '',
+      agent_title: () =>
+        agentId ? (agentSelectors.getAgentMetaById(agentId)(agentStoreState)?.title ?? '') : '',
+      agent_description: () =>
+        agentId
+          ? (agentSelectors.getAgentMetaById(agentId)(agentStoreState)?.description ?? '')
+          : '',
+      topic_id: () => topicId ?? '',
+      topic_title: () => {
+        if (!topicId) return '';
+        const topic = topicSelectors.getTopicById(topicId)(getChatStoreState());
+        return topic?.title ?? '';
+      },
     },
 
     // Extended contexts - only pass when enabled
     ...(isAgentBuilderEnabled && { agentBuilderContext }),
-    ...(agentIdentityContext && { agentIdentityContext }),
     ...(isGroupAgentBuilderEnabled && { groupAgentBuilderContext }),
     ...(agentManagementContext && { agentManagementContext }),
     ...(agentGroup && { agentGroup }),

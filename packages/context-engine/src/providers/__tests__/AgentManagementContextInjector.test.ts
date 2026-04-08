@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import type { PipelineContext } from '../../types';
 import { AgentBuilderContextInjector } from '../AgentBuilderContextInjector';
-import { AgentIdentityContextInjector } from '../AgentIdentityContextInjector';
 import { AgentManagementContextInjector } from '../AgentManagementContextInjector';
 import { UserMemoryInjector } from '../UserMemoryInjector';
 
@@ -193,11 +192,11 @@ describe('AgentManagementContextInjector', () => {
      * its message BEFORE the memory wrapper, splitting the consolidated
      * context into two messages with reversed order.
      *
-     * Now that AgentManagement / AgentBuilder / AgentIdentity all extend
-     * BaseFirstUserContentProvider, all four should merge into ONE message
+     * Now that AgentManagement / AgentBuilder both extend
+     * BaseFirstUserContentProvider, all three should merge into ONE message
      * in the order their injectors run.
      */
-    it('should merge UserMemory + AgentManagement + AgentBuilder + AgentIdentity into ONE message', async () => {
+    it('should merge UserMemory + AgentBuilder + AgentManagement into ONE message', async () => {
       const memory = new UserMemoryInjector({
         enabled: true,
         memories: {
@@ -219,10 +218,6 @@ describe('AgentManagementContextInjector', () => {
           ],
         },
       });
-      const identity = new AgentIdentityContextInjector({
-        enabled: true,
-        context: { agent: { id: 'agt_self', title: 'Self' } },
-      });
 
       let ctx: PipelineContext = {
         initialState: { messages: [] },
@@ -238,7 +233,6 @@ describe('AgentManagementContextInjector', () => {
       ctx = await memory.process(ctx);
       ctx = await builder.process(ctx);
       ctx = await mgmt.process(ctx);
-      ctx = await identity.process(ctx);
 
       // Expect exactly: [system, merged systemInjection, original user]
       expect(ctx.messages).toHaveLength(3);
@@ -250,24 +244,19 @@ describe('AgentManagementContextInjector', () => {
       expect(merged.meta?.systemInjection).toBe(true);
       const content = merged.content as string;
 
-      // All four context blocks present in the SAME message
+      // All three context blocks present in the SAME message
       expect(content).toContain('<user_memory>');
       expect(content).toContain('<current_agent_context>');
       expect(content).toContain('Builder Agent');
       expect(content).toContain('<agent_management_context>');
       expect(content).toContain('gpt-4');
-      expect(content).toContain('<current_agent_identity>');
-      expect(content).toContain('agt_self');
 
-      // And in injector-run order: memory < builder < management < identity
+      // And in injector-run order: memory < builder < management
       expect(content.indexOf('<user_memory>')).toBeLessThan(
         content.indexOf('<current_agent_context>'),
       );
       expect(content.indexOf('<current_agent_context>')).toBeLessThan(
         content.indexOf('<agent_management_context>'),
-      );
-      expect(content.indexOf('<agent_management_context>')).toBeLessThan(
-        content.indexOf('<current_agent_identity>'),
       );
     });
 

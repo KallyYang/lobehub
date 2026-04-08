@@ -8,7 +8,6 @@ export {
   AgentDocumentSystemAppendInjector,
   AgentDocumentSystemReplaceInjector,
 } from './AgentDocumentInjector';
-export { AgentIdentityContextInjector } from './AgentIdentityContextInjector';
 export { AgentManagementContextInjector } from './AgentManagementContextInjector';
 export { BotPlatformContextInjector } from './BotPlatformContextInjector';
 export { DiscordContextProvider } from './DiscordContextProvider';
@@ -60,12 +59,6 @@ export type {
   AgentDocumentSystemAppendInjectorConfig,
   AgentDocumentSystemReplaceInjectorConfig,
 } from './AgentDocumentInjector';
-export type {
-  AgentIdentityContext,
-  AgentIdentityContextInjectorConfig,
-  AgentIdentityInfo,
-  TopicIdentityInfo,
-} from './AgentIdentityContextInjector';
 export type {
   AgentManagementContext,
   AgentManagementContextInjectorConfig,

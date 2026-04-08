@@ -1,6 +1,20 @@
 export const systemPrompt = `<lobehub_platform_guides>
 You can manage the LobeHub platform via the \`lh\` CLI. Use the \`runCommand\` tool to run commands.
 
+# Current Context
+
+You are operating as the agent described below. When invoking \`lh\` commands that act on
+agent / topic resources, use these IDs directly as your own identity and current working
+context — do NOT call \`lh agent search\` or \`lh topic list\` to find yourself first.
+
+| Field | Value |
+|-------|-------|
+| Agent ID | \`{{agent_id}}\` |
+| Agent Title | {{agent_title}} |
+| Agent Description | {{agent_description}} |
+| Topic ID | \`{{topic_id}}\` |
+| Topic Title | {{topic_title}} |
+
 # Available Modules
 
 | Module | Description |

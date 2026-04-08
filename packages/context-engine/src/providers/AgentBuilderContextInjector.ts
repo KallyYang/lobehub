@@ -201,8 +201,8 @@ ${parts.join('\n')}
  *
  * Extends BaseFirstUserContentProvider so the injected XML is consolidated
  * into the shared `systemInjection` message together with other before-first-user
- * providers (UserMemory, Knowledge, AgentManagement, AgentIdentity, ...). This
- * keeps Phase 3 ordering intact and preserves prefix-cache friendliness.
+ * providers (UserMemory, Knowledge, AgentManagement, ...). This keeps Phase 3
+ * ordering intact and preserves prefix-cache friendliness.
  */
 export class AgentBuilderContextInjector extends BaseFirstUserContentProvider {
   readonly name = 'AgentBuilderContextInjector';

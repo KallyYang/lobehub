@@ -243,8 +243,8 @@ ${agentsXml}
  * 1. **Before first user message** — providers/plugins/availableAgents XML.
  *    Goes through `BaseFirstUserContentProvider` so it merges with other
  *    `systemInjection: true` providers (UserMemory, Knowledge, AgentBuilder,
- *    AgentIdentity, ...) into a single consolidated message, preserving
- *    Phase 3 ordering and prefix-cache friendliness.
+ *    ...) into a single consolidated message, preserving Phase 3 ordering
+ *    and prefix-cache friendliness.
  *
  * 2. **After last user message** — `<mentioned_agents>` delegation hint.
  *    Always its own standalone message because position matters for model
