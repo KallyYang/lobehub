@@ -144,6 +144,13 @@ const chatStreamable = async function* <T>(stream: AsyncIterable<T>) {
 
 const ERROR_CHUNK_PREFIX = '%FIRST_CHUNK_ERROR%: ';
 
+export const ABORT_CHUNK = '%ABORT_CHUNK%';
+
+const isAbortError = (error: Error): boolean =>
+  error.name === 'AbortError' ||
+  error.message.includes('aborted') ||
+  error.message.includes('cancelled');
+
 export function readableFromAsyncIterable<T>(iterable: AsyncIterable<T>) {
   const it = iterable[Symbol.asyncIterator]();
   return new ReadableStream<T>({
@@ -158,6 +165,12 @@ export function readableFromAsyncIterable<T>(iterable: AsyncIterable<T>) {
         else controller.enqueue(value);
       } catch (e) {
         const error = e as Error;
+
+        if (isAbortError(error)) {
+          controller.enqueue(ABORT_CHUNK as T);
+          controller.close();
+          return;
+        }
 
         controller.enqueue(
           (ERROR_CHUNK_PREFIX +
@@ -189,6 +202,12 @@ export const convertIterableToStream = <T>(stream: AsyncIterable<T>) => {
       } catch (e) {
         const error = e as Error;
 
+        if (isAbortError(error)) {
+          controller.enqueue(ABORT_CHUNK as T);
+          controller.close();
+          return;
+        }
+
         controller.enqueue(
           (ERROR_CHUNK_PREFIX +
             JSON.stringify({ message: error.message, name: error.name, stack: error.stack })) as T,
@@ -204,6 +223,12 @@ export const convertIterableToStream = <T>(stream: AsyncIterable<T>) => {
         else controller.enqueue(value);
       } catch (e) {
         const error = e as Error;
+
+        if (isAbortError(error)) {
+          controller.enqueue(ABORT_CHUNK as T);
+          controller.close();
+          return;
+        }
 
         controller.enqueue(
           (ERROR_CHUNK_PREFIX +
@@ -410,6 +435,11 @@ export const createFirstErrorHandleTransformer = (
 ) => {
   return new TransformStream({
     transform(chunk, controller) {
+      if (chunk === ABORT_CHUNK) {
+        controller.enqueue(chunk);
+        return;
+      }
+
       if (chunk.toString().startsWith(ERROR_CHUNK_PREFIX)) {
         const errorData = JSON.parse(chunk.toString().replace(ERROR_CHUNK_PREFIX, ''));
 
@@ -523,6 +553,15 @@ export const createTokenSpeedCalculator = (
 
   return new TransformStream({
     transform(chunk, controller) {
+      if (chunk === ABORT_CHUNK) {
+        controller.enqueue({
+          data: 'abort',
+          id: streamStack?.id || '',
+          type: 'stop',
+        } as StreamProtocolChunk);
+        return;
+      }
+
       let result = transformer(chunk, streamStack || { id: '' });
       if (!Array.isArray(result)) result = [result];
       result.forEach((r) => {
