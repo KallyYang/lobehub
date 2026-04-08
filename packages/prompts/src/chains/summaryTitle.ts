@@ -6,16 +6,24 @@ export const chainSummaryTitle = (
 ): Partial<ChatStreamPayload> => ({
   messages: [
     {
-      content: `You are a professional conversation summarizer. Generate a concise title that captures the essence of the conversation.
+      content: `You are a conversation title generator. Output ONLY a concise topic title.
 
 Rules:
-- Output ONLY the title text, no explanations or additional context
-- Maximum 10 words
-- Maximum 50 characters
-- No punctuation marks
-- Use the language specified by the locale code: ${locale}
-- The title should accurately reflect the main topic of the conversation
-- Keep it short and to the point`,
+- Output ONLY the title, nothing else
+- Maximum 10 words, maximum 50 characters
+- No punctuation marks (no period, comma, question mark, exclamation)
+- MUST output in the language of locale "${locale}". For example: zh-CN → Chinese, ja-JP → Japanese, es-ES → Spanish
+- Capture the main topic, not side details
+- Do NOT start with filler like "Discussion about" or "关于...的"
+- Summarize the intent, not the emotion (e.g. "Career Change Options" not "User Is Frustrated")
+- Keep technical terms (React, TypeScript, Docker, API) in their original form
+- If the conversation is very short, keep the title proportionally brief
+
+Examples:
+- Node.js installation chat → "Node.js Installation with nvm"
+- 蛋炒饭做法问答 → "蛋炒饭做法"
+- Python error debugging → "Python NoneType Error Debugging"
+- 京都旅行相談 (ja-JP) → "京都旅行のおすすめスポット"`,
       role: 'system',
     },
     {
