@@ -467,21 +467,40 @@ export const createRuntimeExecutors = (
 
         // Build additional placeholder variables for the lobehub builtin skill
         // (`packages/builtin-skills/src/lobehub/content.ts`) so it can render
-        // `{{agent_id}}` / `{{topic_id}}` etc. into the model's prompt without
-        // needing a separate context injector.
+        // `{{agent_id}}` / `{{agent_title}}` / `{{topic_id}}` etc. into the
+        // model's prompt without needing a separate context injector.
         //
-        // TODO: agent_title / agent_description / topic_title are populated
-        // on the client path but not here — they would require extra DB queries
-        // (agent table for meta, topic table for title). For now they fall
-        // back to empty strings so the template still renders cleanly. If
-        // identity richness on server-driven runs becomes important, plumb
-        // these through `ctx.agentConfig` or load them in a single query.
+        // - agent_title / agent_description: read directly from agentConfig,
+        //   which is the result of AgentModel.getAgentConfig() and already
+        //   contains the full enriched agent record (title, description, ...).
+        //   No extra query needed.
+        // - topic_title: requires a single primary-key lookup against the
+        //   topics table. Skipped when topicId is missing or the lookup fails
+        //   (best-effort, falls back to empty string so the template still
+        //   renders cleanly).
+        const lobehubSkillAgentId = state.metadata?.agentId;
+        const lobehubSkillTopicId = state.metadata?.topicId;
+        const lobehubSkillAgentMeta = state.metadata?.agentConfig as
+          | { description?: string | null; title?: string | null }
+          | undefined;
+
+        let lobehubSkillTopicTitle = '';
+        if (lobehubSkillTopicId && ctx.serverDB && ctx.userId) {
+          try {
+            const topicModelForLobehub = new TopicModel(ctx.serverDB, ctx.userId);
+            const topicRecord = await topicModelForLobehub.findById(lobehubSkillTopicId);
+            lobehubSkillTopicTitle = topicRecord?.title ?? '';
+          } catch (error) {
+            log('Failed to load topic title for lobehub skill placeholders: %O', error);
+          }
+        }
+
         const lobehubSkillVariables: Record<string, string> = {
-          agent_id: state.metadata?.agentId ?? '',
-          agent_title: '',
-          agent_description: '',
-          topic_id: state.metadata?.topicId ?? '',
-          topic_title: '',
+          agent_id: lobehubSkillAgentId ?? '',
+          agent_title: lobehubSkillAgentMeta?.title ?? '',
+          agent_description: lobehubSkillAgentMeta?.description ?? '',
+          topic_id: lobehubSkillTopicId ?? '',
+          topic_title: lobehubSkillTopicTitle,
         };
 
         const contextEngineInput = {
