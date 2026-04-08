@@ -5,6 +5,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { getTestDB } from '../../core/getTestDB';
 import type { NewDocument, NewFile } from '../../schemas/file';
 import { documents, files } from '../../schemas/file';
+import { chunks, embeddings } from '../../schemas/rag';
+import { fileChunks } from '../../schemas/relations';
 import { users } from '../../schemas/user';
 import type { LobeChatDatabase } from '../../type';
 import { KnowledgeRepo } from './index';
@@ -13,6 +15,7 @@ const userId = 'knowledge-test-user';
 const otherUserId = 'other-knowledge-user';
 
 let knowledgeRepo: KnowledgeRepo;
+const testEmbedding = Array.from({ length: 1024 }, () => 0.1);
 
 const serverDB: LobeChatDatabase = await getTestDB();
 
@@ -567,6 +570,45 @@ describe('KnowledgeRepo', () => {
         totalLineCount: 10,
         userId,
       });
+
+      await serverDB.insert(files).values({
+        id: 'delete-doc-file',
+        fileType: 'application/pdf',
+        name: 'delete-doc-file.pdf',
+        size: 2048,
+        url: 'delete-doc-file-url',
+        userId,
+      });
+
+      await serverDB.insert(documents).values({
+        id: 'delete-doc-with-file',
+        content: 'Document with mirrored file',
+        fileId: 'delete-doc-file',
+        fileType: 'application/pdf',
+        filename: 'delete-doc-file.pdf',
+        source: 'source',
+        sourceType: 'api',
+        totalCharCount: 120,
+        totalLineCount: 12,
+        userId,
+      });
+
+      await serverDB.insert(chunks).values({
+        id: 'delete-doc-chunk',
+        text: 'chunk for document file',
+        userId,
+      });
+      await serverDB.insert(fileChunks).values({
+        chunkId: 'delete-doc-chunk',
+        fileId: 'delete-doc-file',
+        userId,
+      });
+      await serverDB.insert(embeddings).values({
+        chunkId: 'delete-doc-chunk',
+        embeddings: testEmbedding,
+        model: 'test-model',
+        userId,
+      });
     });
 
     it('should delete a file by id', async () => {
@@ -587,6 +629,28 @@ describe('KnowledgeRepo', () => {
         where: (d, { eq }) => eq(d.id, 'delete-doc'),
       });
       expect(result).toBeUndefined();
+    });
+
+    it('should delete mirrored file data when deleting a file-backed document', async () => {
+      await knowledgeRepo.deleteItem('delete-doc-with-file', 'document');
+
+      const document = await serverDB.query.documents.findFirst({
+        where: (d, { eq }) => eq(d.id, 'delete-doc-with-file'),
+      });
+      const file = await serverDB.query.files.findFirst({
+        where: (f, { eq }) => eq(f.id, 'delete-doc-file'),
+      });
+      const chunk = await serverDB.query.chunks.findFirst({
+        where: (c, { eq }) => eq(c.id, 'delete-doc-chunk'),
+      });
+      const embedding = await serverDB.query.embeddings.findFirst({
+        where: (e, { eq }) => eq(e.chunkId, 'delete-doc-chunk'),
+      });
+
+      expect(document).toBeUndefined();
+      expect(file).toBeUndefined();
+      expect(chunk).toBeUndefined();
+      expect(embedding).toBeUndefined();
     });
   });
 
@@ -615,6 +679,7 @@ describe('KnowledgeRepo', () => {
         {
           id: 'delete-many-doc-1',
           content: 'Delete doc 1',
+          fileId: 'delete-many-doc-file-1',
           fileType: 'custom/other',
           filename: 'delete-doc-1.txt',
           source: 'source',
@@ -624,6 +689,31 @@ describe('KnowledgeRepo', () => {
           userId,
         },
       ]);
+
+      await serverDB.insert(files).values({
+        id: 'delete-many-doc-file-1',
+        fileType: 'application/pdf',
+        name: 'delete-many-doc-file-1.pdf',
+        size: 1024,
+        url: 'delete-many-doc-file-1-url',
+        userId,
+      });
+      await serverDB.insert(chunks).values({
+        id: 'delete-many-doc-chunk-1',
+        text: 'delete many chunk',
+        userId,
+      });
+      await serverDB.insert(fileChunks).values({
+        chunkId: 'delete-many-doc-chunk-1',
+        fileId: 'delete-many-doc-file-1',
+        userId,
+      });
+      await serverDB.insert(embeddings).values({
+        chunkId: 'delete-many-doc-chunk-1',
+        embeddings: testEmbedding,
+        model: 'test-model',
+        userId,
+      });
     });
 
     it('should delete multiple items of mixed types', async () => {
@@ -643,10 +733,22 @@ describe('KnowledgeRepo', () => {
       const doc1 = await serverDB.query.documents.findFirst({
         where: (d, { eq }) => eq(d.id, 'delete-many-doc-1'),
       });
+      const mirroredFile = await serverDB.query.files.findFirst({
+        where: (f, { eq }) => eq(f.id, 'delete-many-doc-file-1'),
+      });
+      const chunk = await serverDB.query.chunks.findFirst({
+        where: (c, { eq }) => eq(c.id, 'delete-many-doc-chunk-1'),
+      });
+      const embedding = await serverDB.query.embeddings.findFirst({
+        where: (e, { eq }) => eq(e.chunkId, 'delete-many-doc-chunk-1'),
+      });
 
       expect(file1).toBeUndefined();
       expect(file2).toBeUndefined();
       expect(doc1).toBeUndefined();
+      expect(mirroredFile).toBeUndefined();
+      expect(chunk).toBeUndefined();
+      expect(embedding).toBeUndefined();
     });
 
     it('should handle empty items array', async () => {
