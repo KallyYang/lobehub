@@ -827,6 +827,13 @@ export const taskRouter = router({
           ...(typeof taskConfig.provider === 'string' && { provider: taskConfig.provider }),
           hooks: [
             {
+              handler: async () => {
+                await model.updateHeartbeat(taskId);
+              },
+              id: 'task-heartbeat',
+              type: 'afterStep' as const,
+            },
+            {
               handler: async (event) => {
                 await taskLifecycle.onTopicComplete({
                   errorMessage: event.errorMessage,
